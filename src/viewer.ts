@@ -31,7 +31,13 @@ interface Bird {
   speed: number
 }
 
+interface Fox {
+  x: number
+  speed: number
+}
+
 let birds: Bird[] = []
+let foxes: Fox[] = []
 let activeMilestoneText: string | undefined = undefined
 let isRaining = false
 let rainUntil = 0
@@ -44,6 +50,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
   const frame = renderFrame(forest, process.stdout.columns || 80, {
     twinkleSeed,
     birds,
+    foxes,
     milestoneText,
     isRaining,
     windStrength,
@@ -143,6 +150,23 @@ export async function viewer(): Promise<void> {
       rainUntil = now + (3 + Math.random() * 7) * 60 * 1000
     }
   }, 90 * 1000)
+
+  // Fox movement: slower than birds, runs along ground
+  setInterval(() => {
+    const width = process.stdout.columns || 80
+    foxes = foxes.filter((f) => f.x <= width + 2)
+    foxes.forEach((f) => { f.x += f.speed })
+  }, 400)
+
+  // Fox spawn: every 8–20 minutes, a single fox trots through
+  function scheduleFoxSpawn(): void {
+    const delay = (8 + Math.random() * 12) * 60 * 1000
+    setTimeout(() => {
+      foxes.push({ x: -2, speed: 1 })
+      scheduleFoxSpawn()
+    }, delay)
+  }
+  scheduleFoxSpawn()
 
   // Lightning: rare flash during rain (3% per 500ms check)
   setInterval(() => {

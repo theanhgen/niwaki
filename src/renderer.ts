@@ -282,6 +282,20 @@ function getSkyColor(row: number, period: TimePeriod, blend: number): string {
   return lerpColor(zenith, horizon, t)
 }
 
+// ── Sun arc ──────────────────────────────────────────────────────────────────
+
+function getSunPosition(date: Date, width: number): { x: number; y: number; color: string } | null {
+  const h = date.getHours() + date.getMinutes() / 60
+  if (h < 7 || h > 18) return null
+  const t = (h - 7) / 11  // 0 at sunrise, 1 at sunset
+  const x = Math.floor(t * (width - 2)) + 1
+  const arc = 1 - 4 * (t - 0.5) ** 2  // parabola: 0 at edges, 1 at noon
+  const y = Math.round((SKY_ROWS - 1) * (1 - arc * 0.85))
+  const proximity = Math.abs(t - 0.5)
+  const color = proximity > 0.38 ? "#e07818" : proximity > 0.22 ? "#f0b030" : "#f8e050"
+  return { x, y, color }
+}
+
 // ── Moon phase ───────────────────────────────────────────────────────────────
 
 function getMoonPhase(date: Date): number {
@@ -333,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -352,6 +366,17 @@ export function renderFrame(
     const skyColor = getSkyColor(y, period, blend)
     for (let x = 0; x < width; x++) {
       buffer[y]![x] = { char: "█", color: skyColor }
+    }
+  }
+
+  // 2b. Sun arc (day only, hidden during rain)
+  if (!options.isRaining) {
+    const sun = getSunPosition(now, width)
+    if (sun) {
+      buffer[sun.y]![sun.x] = { char: "●", color: sun.color }
+      const glowColor = lerpColor(sun.color, getSkyColor(sun.y, period, blend), 0.55)
+      if (sun.x + 1 < width) buffer[sun.y]![sun.x + 1] = { char: "·", color: glowColor }
+      if (sun.x - 1 >= 0) buffer[sun.y]![sun.x - 1] = { char: "·", color: glowColor }
     }
   }
 
@@ -438,6 +463,27 @@ export function renderFrame(
       buffer[y]![boltX] = { char: y === SKY_ROWS - 1 ? "!" : "|", color: y === 0 ? "#ffffff" : "#ffffa0" }
     }
     if (boltX + 1 < width) buffer[0]![boltX + 1] = { char: "·", color: "#ffffcc" }
+  }
+
+  // 7c. Fox — runs along the undergrowth row
+  for (const fox of options.foxes ?? []) {
+    const fy = groundStart - 1
+    if (fox.x >= 0 && fox.x < width) {
+      buffer[fy]![fox.x] = { char: ">", color: "#d06020" }
+      if (fox.x - 1 >= 0) buffer[fy]![fox.x - 1] = { char: "~", color: "#b84a10" }
+    }
+  }
+
+  // 7d. Winter frost — ice crystals on tree branches
+  if (season === "winter") {
+    for (let y = SKY_ROWS; y < groundStart - 1; y++) {
+      for (let x = 0; x < width; x++) {
+        if (!buffer[y]![x]?.color) continue
+        const h = hash(x * 43 + y * 89 + 5678)
+        if (h % 22 !== 0) continue
+        buffer[y]![x] = { char: "*", color: "#b0c8e8" }
+      }
+    }
   }
 
   // 8a. Undergrowth — sparse details between tree trunks

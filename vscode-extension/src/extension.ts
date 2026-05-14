@@ -71,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
         await plantTree();
       } catch {
         vscode.window.showErrorMessage(
-          "Niwaki: failed to plant. Is niwaki installed? (npm i -g niwaki)",
+          "Niwaki: failed to plant. Is niwaki installed? (bun add -g niwaki)",
         );
       }
     }),

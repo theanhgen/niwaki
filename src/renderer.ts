@@ -333,7 +333,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -409,11 +409,35 @@ export function renderFrame(
     } catch {}
   }
 
+  // 6c. Owl — perches at top of a tree at night, gone by mid-dawn
+  if ((period === "night" || (period === "dusk" && blend > 0.6) || (period === "dawn" && blend < 0.3)) && forest.trees.length > 0) {
+    const roostIdx = hash(forest.trees.length * 13 + 42) % forest.trees.length
+    const roostX = forest.trees[roostIdx]!.x
+    for (let y = SKY_ROWS; y < SKY_ROWS + TREE_ROWS - 1; y++) {
+      if (buffer[y]![roostX]?.color !== null) {
+        const owlY = Math.max(SKY_ROWS, y - 1)
+        if (buffer[owlY]![roostX]?.color === null) {
+          buffer[owlY]![roostX] = { char: "ö", color: "#9a8a6a" }
+        }
+        break
+      }
+    }
+  }
+
   // 7. Birds
   for (const bird of options.birds ?? []) {
     if (bird.y >= 0 && bird.y < SKY_ROWS && bird.x >= 0 && bird.x < width) {
       buffer[bird.y]![bird.x] = { char: ">", color: "#7a7878" }
     }
+  }
+
+  // 7b. Lightning bolt in sky
+  if (options.isLightning) {
+    const boltX = hash((options.twinkleSeed ?? 0) * 53 + 22222) % width
+    for (let y = 0; y < SKY_ROWS; y++) {
+      buffer[y]![boltX] = { char: y === SKY_ROWS - 1 ? "!" : "|", color: y === 0 ? "#ffffff" : "#ffffa0" }
+    }
+    if (boltX + 1 < width) buffer[0]![boltX + 1] = { char: "·", color: "#ffffcc" }
   }
 
   // 8a. Undergrowth — sparse details between tree trunks
@@ -459,7 +483,21 @@ export function renderFrame(
     }
   }
 
-  // 8b. Fireflies — night and dusk only, drift with twinkle seed
+  // 8b. Spring blossom drift — pink petals floating in upper canopy
+  if (season === "spring") {
+    const seed = options.twinkleSeed ?? 0
+    const petalCount = Math.max(2, Math.floor(width * 0.05))
+    for (let i = 0; i < petalCount; i++) {
+      const h = hash(i * 61 + seed * 83 + 3333)
+      const x = h % width
+      const y = SKY_ROWS + (hash(h + 5) % Math.floor(TREE_ROWS * 0.6))
+      if (buffer[y]![x]?.color !== null) continue
+      const petalColors = ["#f0a0c0", "#e880a8", "#ffc0d8"] as const
+      buffer[y]![x] = { char: "✿", color: petalColors[h % 3]! }
+    }
+  }
+
+  // 8c. Fireflies — night and dusk only, drift with twinkle seed
   if (period === "night" || period === "dusk") {
     const seed = options.twinkleSeed ?? 0
     const count = Math.max(3, Math.floor(width * 0.06))

@@ -37,6 +37,7 @@ let isRaining = false
 let rainUntil = 0
 let postRainUntil = 0
 let windStrength: 0 | 1 | 2 = 0
+let isLightning = false
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -47,6 +48,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     isRaining,
     windStrength,
     postRain: Date.now() < postRainUntil,
+    isLightning,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -141,6 +143,17 @@ export async function viewer(): Promise<void> {
       rainUntil = now + (3 + Math.random() * 7) * 60 * 1000
     }
   }, 90 * 1000)
+
+  // Lightning: rare flash during rain (3% per 500ms check)
+  setInterval(() => {
+    if (!isRaining || animating || Math.random() > 0.03) return
+    isLightning = true
+    renderForest(forest!, 0, activeMilestoneText)
+    setTimeout(() => {
+      isLightning = false
+      if (!animating) renderForest(forest!, 0, activeMilestoneText)
+    }, 140)
+  }, 500)
 
   // Wind tick: shift strength every 5–15 minutes
   function scheduleWindChange(): void {

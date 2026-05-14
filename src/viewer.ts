@@ -36,8 +36,15 @@ interface Fox {
   speed: number
 }
 
+interface Deer {
+  x: number
+  speed: number
+}
+
 let birds: Bird[] = []
 let foxes: Fox[] = []
+let shootingStarTrail: { x: number; y: number }[] = []
+let deer: Deer | null = null
 let activeMilestoneText: string | undefined = undefined
 let isRaining = false
 let rainUntil = 0
@@ -51,6 +58,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     twinkleSeed,
     birds,
     foxes,
+    shootingStarTrail,
+    deer: deer ?? undefined,
     milestoneText,
     isRaining,
     windStrength,
@@ -114,13 +123,27 @@ export async function viewer(): Promise<void> {
   let lastTotalPrompts = forest.totalPrompts
   let animating = false
 
-  // Bird movement: advance each bird every 250ms (wind speeds them up), re-render if not animating
+  // Bird + shooting star movement: 250ms tick
   setInterval(() => {
     const width = process.stdout.columns || 80
     birds = birds.filter((b) => b.x <= width)
     birds.forEach((b) => { b.x += b.speed + windStrength })
+    // Advance shooting star trail diagonally (right 2, down 1)
+    shootingStarTrail = shootingStarTrail
+      .map((p) => ({ x: p.x + 2, y: p.y + 1 }))
+      .filter((p) => p.y < 4 && p.x < width)
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
+
+  // Shooting star trigger: rare, night-only (~0.8% per 2s = roughly once per 4 min at night)
+  setInterval(() => {
+    const h = new Date().getHours()
+    const isNight = h >= 22 || h < 5
+    if (!isNight || Math.random() > 0.008) return
+    const width = process.stdout.columns || 80
+    const startX = Math.floor(Math.random() * (width * 0.55))
+    for (let i = 0; i < 5; i++) shootingStarTrail.push({ x: startX - i * 2, y: i })
+  }, 2000)
 
   // Bird spawn scheduler: 2.5–3.5 minutes between flocks
   function scheduleBirdSpawn(): void {
@@ -157,6 +180,24 @@ export async function viewer(): Promise<void> {
     foxes = foxes.filter((f) => f.x <= width + 2)
     foxes.forEach((f) => { f.x += f.speed })
   }, 400)
+
+  // Deer: crepuscular — spawns at dawn (5–8h) or dusk (17–21h), grazes then slowly walks off
+  setInterval(() => {
+    if (deer) return
+    const h = new Date().getHours()
+    const isDawnDusk = (h >= 5 && h < 8) || (h >= 17 && h < 21)
+    if (!isDawnDusk || Math.random() > 0.35) return
+    const width = process.stdout.columns || 80
+    deer = { x: Math.floor(width * 0.25 + Math.random() * width * 0.5), speed: 0 }
+    setTimeout(() => { if (deer) deer.speed = 1 }, (30 + Math.random() * 60) * 1000)
+  }, 3 * 60 * 1000)
+
+  setInterval(() => {
+    if (!deer) return
+    const width = process.stdout.columns || 80
+    deer.x += deer.speed
+    if (deer.x > width + 3) deer = null
+  }, 2000)
 
   // Fox spawn: every 8–20 minutes, a single fox trots through
   function scheduleFoxSpawn(): void {

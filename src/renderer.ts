@@ -1,7 +1,7 @@
 import chalk from "chalk"
 
 import type { Forest, Grid, Sprite } from "./types.js"
-import { getSprite, TREE_TYPES } from "./sprites.js"
+import { getSprite, getAnimalSprite, TREE_TYPES } from "./sprites.js"
 
 const SKY_ROWS = 4
 const TREE_ROWS = 7
@@ -37,6 +37,15 @@ function parseHex(hex: string): RGB {
 function toHex({ r, g, b }: RGB): string {
   const c = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")
   return `#${c(r)}${c(g)}${c(b)}`
+}
+
+function lerpColor(a: string, b: string, t: number): string {
+  const ca = parseHex(a), cb = parseHex(b)
+  return toHex({
+    r: ca.r + (cb.r - ca.r) * t,
+    g: ca.g + (cb.g - ca.g) * t,
+    b: ca.b + (cb.b - ca.b) * t,
+  })
 }
 
 function wiltColor(hex: string, factor: number): string {
@@ -192,6 +201,17 @@ function getNextTreeType(treeCount: number): string {
   return TREE_TYPES[treeCount % TREE_TYPES.length]!
 }
 
+const STATS_SHORT: Record<string, string> = {
+  dragonblood: "dragon",
+  eucalyptus: "eucalypt",
+  araucaria: "araucar",
+}
+
+function getNextTreeDisplay(treeCount: number): string {
+  const type = getNextTreeType(treeCount)
+  return STATS_SHORT[type] ?? type
+}
+
 function buildStreakSegment(forest: Forest): string {
   const wilt = getWiltFactor(forest.lastActiveDate)
   const streak = forest.streak ?? 0
@@ -225,22 +245,136 @@ function buildStatsLine(forest: Forest, biome: Biome): string {
     buildStreakSegment(forest) +
     chalk.hex(STATS_TEXT)(" · ") +
     bar +
-    chalk.hex(STATS_TEXT)(` next: ${getNextTreeType(treeCount)}`) +
+    chalk.hex(STATS_TEXT)(` next: ${getNextTreeDisplay(treeCount)}`) +
     chalk.hex("#555555")(` [${biome.label}]`)
   )
 }
 
-export function renderFrame(forest: Forest, termWidth = 80, options: { twinkleSeed?: number } = {}): string {
+// ── Time of day ──────────────────────────────────────────────────────────────
+
+type TimePeriod = "night" | "dawn" | "day" | "dusk"
+
+function getTimeOfDay(date: Date): { period: TimePeriod; blend: number } {
+  const h = date.getHours() + date.getMinutes() / 60
+  if (h >= 5 && h < 7) return { period: "dawn", blend: (h - 5) / 2 }
+  if (h >= 7 && h < 18) return { period: "day", blend: 0 }
+  if (h >= 18 && h < 22) return { period: "dusk", blend: (h - 18) / 4 }
+  return { period: "night", blend: 0 }
+}
+
+function getSkyColor(row: number, period: TimePeriod, blend: number): string {
+  // row 0 = top/zenith, row SKY_ROWS-1 = horizon
+  const t = row / (SKY_ROWS - 1)
+  if (period === "night") {
+    return lerpColor("#06080f", "#0d1220", t)
+  }
+  if (period === "day") {
+    return lerpColor("#1a3a6a", "#2a4a7a", t)
+  }
+  if (period === "dawn") {
+    const zenith = lerpColor("#06080f", "#1a0a2e", blend)
+    const horizon = lerpColor("#0d1220", "#7a3020", blend)
+    return lerpColor(zenith, horizon, t)
+  }
+  // dusk
+  const zenith = lerpColor("#1a3a6a", "#2a0a3a", blend)
+  const horizon = lerpColor("#2a4a7a", "#6a1a10", blend)
+  return lerpColor(zenith, horizon, t)
+}
+
+// ── Moon phase ───────────────────────────────────────────────────────────────
+
+function getMoonPhase(date: Date): number {
+  // Returns 0-1, 0=new moon, 0.5=full moon
+  const knownNew = new Date("2000-01-06T00:00:00Z").getTime()
+  const lunarMs = 29.530589 * 24 * 60 * 60 * 1000
+  return ((date.getTime() - knownNew) % lunarMs) / lunarMs
+}
+
+function getMoonChar(phase: number): string {
+  if (phase < 0.05 || phase > 0.95) return "·"
+  if (phase < 0.25) return "◔"
+  if (phase < 0.45) return "◑"
+  if (phase < 0.55) return "●"
+  if (phase < 0.75) return "◑"
+  if (phase < 0.95) return "◔"
+  return "·"
+}
+
+// ── Seasons ──────────────────────────────────────────────────────────────────
+
+function getSeason(month: number): "spring" | "summer" | "autumn" | "winter" {
+  if (month >= 2 && month <= 4) return "spring"
+  if (month >= 5 && month <= 7) return "summer"
+  if (month >= 8 && month <= 10) return "autumn"
+  return "winter"
+}
+
+const SEASON_TINTS: Record<string, { target: RGB; factor: number }> = {
+  spring: { target: { r: 0x6a, g: 0xd4, b: 0x6a }, factor: 0.08 },
+  summer: { target: { r: 0x00, g: 0x00, b: 0x00 }, factor: 0 },
+  autumn: { target: { r: 0xcc, g: 0x88, b: 0x33 }, factor: 0.10 },
+  winter: { target: { r: 0x88, g: 0x99, b: 0xcc }, factor: 0.08 },
+}
+
+function seasonTintColor(hex: string, season: string): string {
+  const tint = SEASON_TINTS[season]
+  if (!tint || tint.factor === 0) return hex
+  const c = parseHex(hex)
+  return toHex({
+    r: c.r + (tint.target.r - c.r) * tint.factor,
+    g: c.g + (tint.target.g - c.g) * tint.factor,
+    b: c.b + (tint.target.b - c.b) * tint.factor,
+  })
+}
+
+// ── renderFrame ──────────────────────────────────────────────────────────────
+
+export function renderFrame(
+  forest: Forest,
+  termWidth = 80,
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; milestoneText?: string } = {},
+): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
   const groundStart = SKY_ROWS + TREE_ROWS
   const biome = getBiome(forest.trees.length)
   const wilt = getWiltFactor(forest.lastActiveDate)
 
-  for (const star of generateStars(width, biome, options.twinkleSeed ?? 0)) {
-    buffer[star.y]![star.x] = { char: star.char, color: star.color }
+  // 1. Time of day + season
+  const now = new Date()
+  const { period, blend } = getTimeOfDay(now)
+  const season = getSeason(now)
+
+  // 2. Fill sky gradient
+  for (let y = 0; y < SKY_ROWS; y++) {
+    const skyColor = getSkyColor(y, period, blend)
+    for (let x = 0; x < width; x++) {
+      buffer[y]![x] = { char: "█", color: skyColor }
+    }
   }
 
+  // 3. Place stars (dimmed during day)
+  for (const star of generateStars(width, biome, options.twinkleSeed ?? 0)) {
+    let starColor = star.color
+    if (period === "day") {
+      starColor = lerpColor(starColor, getSkyColor(star.y, period, blend), 0.7)
+    }
+    buffer[star.y]![star.x] = { char: star.char, color: starColor }
+  }
+
+  // 4. Moon
+  const moonPhase = getMoonPhase(now)
+  const moonBrightness = Math.sin(moonPhase * Math.PI)
+  const moonColor = lerpColor("#555550", "#ddd8c8", moonBrightness)
+  const moonChar = getMoonChar(moonPhase)
+  const moonX = Math.floor(width * 0.72)
+  const moonY = 1
+  if (moonX >= 0 && moonX < width) {
+    buffer[moonY]![moonX] = { char: moonChar, color: moonColor }
+  }
+
+  // 5. Ground fill
   for (let rowIndex = 0; rowIndex < GROUND_ROWS; rowIndex += 1) {
     for (let x = 0; x < width; x += 1) {
       buffer[groundStart + rowIndex]![x] = {
@@ -250,29 +384,60 @@ export function renderFrame(forest: Forest, termWidth = 80, options: { twinkleSe
     }
   }
 
-  const treeBaseY = groundStart - 1
-  for (const tree of forest.trees) {
-    compositeSprite(buffer, getSprite(tree.type, tree.growth), tree.x, treeBaseY)
+  // Winter snow on top ground row
+  if (season === "winter") {
+    for (let x = 0; x < width; x++) {
+      const snowChar = hash(x * 13 + 77) % 3 === 0 ? "░" : "█"
+      buffer[groundStart]![x] = { char: snowChar, color: lerpColor(biome.ground[0]!, "#c8d0d8", 0.6) }
+    }
   }
 
+  // 6. Composite trees
+  const treeBaseY = groundStart - 1
+  for (const tree of forest.trees) {
+    compositeSprite(buffer, getSprite(tree.type, tree.growth, tree.id % 3), tree.x, treeBaseY)
+  }
+
+  // 7. Birds
+  for (const bird of options.birds ?? []) {
+    if (bird.y >= 0 && bird.y < SKY_ROWS && bird.x >= 0 && bird.x < width) {
+      buffer[bird.y]![bird.x] = { char: ">", color: "#7a7878" }
+    }
+  }
+
+  // 8. Fog
   applyFog(buffer, wilt, width)
 
+  // 9. Output loop with season + wilt color composition
   const lines: string[] = []
   for (let y = 0; y < SCENE_HEIGHT - SPACER_ROWS - STATS_ROWS - CTA_ROWS; y += 1) {
     let line = ""
     for (const cell of buffer[y]!) {
-      if (!cell.color) {
+      const color = (() => {
+        let c = cell.color
+        if (!c) return null
+        if (y >= SKY_ROWS && season !== "summer") c = seasonColor(c, season)
+        if (wilt > 0 && y >= SKY_ROWS) c = wiltColor(c, wilt)
+        return c
+      })()
+      if (!color) {
         line += cell.char
       } else {
-        const color = wilt > 0 && y >= SKY_ROWS ? wiltColor(cell.color, wilt) : cell.color
         line += chalk.hex(color)(cell.char)
       }
     }
     lines.push(line)
   }
 
+  // 10. Stats + CTA
   lines.push("")
-  lines.push(buildStatsLine(forest, biome))
+  lines.push(
+    options.milestoneText
+      ? chalk.hex(STATS_ACCENT)(options.milestoneText.padStart(
+          Math.floor((width + options.milestoneText.length) / 2)
+        ))
+      : buildStatsLine(forest, biome)
+  )
   lines.push(
     chalk.hex("#555555")(" add your forest to your README → ") +
     chalk.hex(STATS_ACCENT)("niwaki badge"),
@@ -280,6 +445,8 @@ export function renderFrame(forest: Forest, termWidth = 80, options: { twinkleSe
 
   return lines.join("\n")
 }
+
+// ── buildScene ───────────────────────────────────────────────────────────────
 
 export function buildScene(forest: Forest, width: number): { buffer: Grid; biome: Biome; sceneRows: number } {
   const w = Math.max(40, width)
@@ -291,38 +458,70 @@ export function buildScene(forest: Forest, width: number): { buffer: Grid; biome
   const biome = getBiome(forest.trees.length)
   const wilt = getWiltFactor(forest.lastActiveDate)
 
-  for (const star of generateStars(w, biome, 0)) {
-    if (star.y < sceneRows) {
-      buffer[star.y]![star.x] = { char: star.char, color: star.color }
+  // Time of day + season
+  const now = new Date()
+  const { period, blend } = getTimeOfDay(now)
+  const season = getSeason(now)
+
+  // Fill sky gradient
+  for (let y = 0; y < SKY_ROWS; y++) {
+    const skyColor = getSkyColor(y, period, blend)
+    for (let x = 0; x < w; x++) {
+      buffer[y]![x] = { char: "█", color: skyColor }
     }
   }
 
+  // Place stars (dimmed during day)
+  for (const star of generateStars(w, biome, 0)) {
+    if (star.y < sceneRows) {
+      let starColor = star.color
+      if (period === "day") {
+        starColor = lerpColor(starColor, getSkyColor(star.y, period, blend), 0.7)
+      }
+      buffer[star.y]![star.x] = { char: star.char, color: starColor }
+    }
+  }
+
+  // Ground fill
   for (let rowIndex = 0; rowIndex < GROUND_ROWS; rowIndex += 1) {
     for (let x = 0; x < w; x += 1) {
       buffer[groundStart + rowIndex]![x] = { char: "█", color: biome.ground[rowIndex]! }
     }
   }
 
+  // Winter snow on top ground row
+  if (season === "winter") {
+    for (let x = 0; x < w; x++) {
+      const snowChar = hash(x * 13 + 77) % 3 === 0 ? "░" : "█"
+      buffer[groundStart]![x] = { char: snowChar, color: lerpColor(biome.ground[0]!, "#c8d0d8", 0.6) }
+    }
+  }
+
+  // Composite trees
   const treeBaseY = groundStart - 1
   for (const tree of forest.trees) {
-    compositeSprite(buffer, getSprite(tree.type, tree.growth), tree.x, treeBaseY)
+    compositeSprite(buffer, getSprite(tree.type, tree.growth, tree.id % 3), tree.x, treeBaseY)
   }
 
   applyFog(buffer, wilt, w)
 
-  if (wilt > 0) {
-    for (let y = SKY_ROWS; y < sceneRows; y += 1) {
-      for (let x = 0; x < w; x += 1) {
-        const cell = buffer[y]![x]!
-        if (cell.color) {
-          cell.color = wiltColor(cell.color, wilt)
-        }
+  // Apply season + wilt to tree/ground cells (unconditional pass)
+  for (let y = SKY_ROWS; y < sceneRows; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      const cell = buffer[y]![x]!
+      if (cell.color) {
+        let c = cell.color
+        if (season !== "summer") c = seasonColor(c, season)
+        if (wilt > 0) c = wiltColor(c, wilt)
+        cell.color = c
       }
     }
   }
 
   return { buffer, biome, sceneRows }
 }
+
+// ── renderPlainText ──────────────────────────────────────────────────────────
 
 export function renderPlainText(forest: Forest, width = 60): string {
   const w = Math.max(40, Math.min(width, 80))
@@ -342,7 +541,7 @@ export function renderPlainText(forest: Forest, width = 60): string {
 
   const treeBaseY = groundStart - 1
   for (const tree of forest.trees) {
-    compositeSprite(buffer, getSprite(tree.type, tree.growth), tree.x, treeBaseY)
+    compositeSprite(buffer, getSprite(tree.type, tree.growth, tree.id % 3), tree.x, treeBaseY)
   }
 
   const lines: string[] = []

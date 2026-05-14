@@ -29,7 +29,7 @@ describe("plant", () => {
   it("adds the required tree fields", async () => {
     await plant()
     const [tree] = readForest()!.trees
-    expect(["oak", "pine", "birch", "willow", "cherry"].includes(tree!.type)).toBe(true)
+    expect(["oak", "pine", "birch", "willow", "cherry", "maple", "ginkgo", "acacia", "baobab", "dragonblood", "araucaria", "olive", "banyan", "eucalyptus"].includes(tree!.type)).toBe(true)
     expect(tree!.growth >= 0.3 && tree!.growth <= 1).toBe(true)
     expect(typeof tree!.x).toBe("number")
     expect(tree!.id).toBe(1)

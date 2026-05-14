@@ -1,4 +1,4 @@
-# Niwaki
+# niwaki
 
 [![npm version](https://img.shields.io/npm/v/niwaki.svg)](https://www.npmjs.com/package/niwaki)
 [![license](https://img.shields.io/npm/l/niwaki.svg)](https://github.com/theanhgen/niwaki/blob/main/LICENSE)
@@ -17,24 +17,7 @@ niwaki init
 niwaki
 ```
 
-That's it. Three commands:
-
-1. **Install** the CLI globally
-2. **Init** creates your forest file and registers a Claude Code hook
-3. **Run the viewer** in a separate terminal to watch your forest grow
-
-After setup, trees are planted automatically after every Claude Code response. No manual steps needed.
-
----
-
-## How It Works
-
-When you run `niwaki init`, it does two things:
-
-- Creates `~/.niwaki/forest.json` to store your forest state
-- Adds a `Stop` hook to `~/.claude/settings.json` that runs after every Claude Code response
-
-From then on, every time Claude Code responds to a prompt, a new tree is planted in your forest automatically. Open the viewer in a second terminal to watch them grow in real time.
+`niwaki init` creates `~/.niwaki/forest.json` and registers a `Stop` hook in `~/.claude/settings.json`. After that, a tree is planted after every Claude Code response. Open the viewer in a second terminal to watch them grow.
 
 ---
 
@@ -43,10 +26,8 @@ From then on, every time Claude Code responds to a prompt, a new tree is planted
 Niwaki tracks your coding streak — consecutive days where you use Claude Code.
 
 - **Active streak**: The viewer and badge show your current streak count (e.g. `7-day streak`)
-- **Broken streak**: Miss a day and your forest starts **wilting** — trees desaturate toward brown, and fog rolls in across the scene
+- **Broken streak**: Miss a day and your forest starts **wilting** — trees desaturate toward brown, and fog rolls in
 - **Recovery**: Your next prompt resets the streak to 1 and clears the wilting immediately
-
-The longer you go without coding, the worse it gets:
 
 | Days idle | Effect |
 |----------:|--------|
@@ -61,19 +42,15 @@ Plant a tree to bring it all back to life.
 
 ## Badge
 
-Generate a badge for your GitHub README that shows your forest stats and links back to [Niwaki](https://github.com/theanhgen/niwaki):
-
 ```bash
 niwaki badge
 ```
 
-This creates a `niwaki-badge.svg` file in your current directory and prints the markdown to embed it:
+Creates `niwaki-badge.svg` in the current directory and prints the markdown to embed it:
 
 ```markdown
 [![niwaki](./niwaki-badge.svg)](https://github.com/theanhgen/niwaki)
 ```
-
-The badge displays your tree count and streak status. It links to the [Niwaki repo](https://github.com/theanhgen/niwaki) so anyone who sees it can install it themselves.
 
 | State | Badge color | Example |
 |-------|-------------|---------|
@@ -81,34 +58,21 @@ The badge displays your tree count and streak status. It links to the [Niwaki re
 | Wilting | Orange-red | `42 trees · wilting` |
 | No streak data | Grey | `42 trees` |
 
-Re-run `niwaki badge` any time to update the SVG with your latest stats. Commit it to your repo to keep it current.
+Re-run `niwaki badge` any time to update the SVG with your latest stats.
 
 ---
 
 ## FOREST.md
 
-Generate a shareable markdown snapshot of your forest:
-
 ```bash
-niwaki md
+niwaki badge && niwaki md
 ```
 
-This creates a `FOREST.md` in your current directory with:
-
-- Your Niwaki badge (links to the [Niwaki repo](https://github.com/theanhgen/niwaki))
-- Stats: tree count, streak, biome
-- A plain-text rendering of your forest (tree silhouettes, stars, ground)
-- Total prompts and forest age
-
-Commit `FOREST.md` to your repo root so your team can see the forest. When teammates see it, they can install Niwaki themselves — one install spreads to the whole team.
-
-Run `niwaki badge` first to generate the SVG, then `niwaki md` to generate the markdown that embeds it.
+Creates `FOREST.md` in the current directory with your badge, stats, a plain-text forest rendering, and total prompts and forest age.
 
 ---
 
 ## Biomes
-
-Your forest evolves visually as it grows — the sky, ground, and atmosphere all change:
 
 | Trees | Biome | What changes |
 |------:|-------|-------------|
@@ -124,15 +88,24 @@ Trees are never deleted. The forest only grows.
 
 ## Tree Species
 
-Fourteen species are randomly assigned when a tree is planted — a few highlights:
+Fourteen species are randomly assigned when a tree is planted:
 
-| Species | Look |
-|---------|------|
-| Pine | Tall, triangular shape |
-| Birch | Light trunk, bright leaves |
-| Willow | Drooping canopy |
-| Maple | Autumn red and orange canopy |
-| Baobab | Massive trunk, sparse crown |
+| Species | Region | Look |
+|---------|--------|------|
+| Oak | Europe | Round dense canopy |
+| Pine | Northern forests | Tall, layered triangles |
+| Birch | Northern Europe | Light trunk, bright leaves |
+| Willow | Temperate zones | Drooping wide canopy |
+| Cherry | East Asia | Pink bloom clusters |
+| Maple | North America | Autumn red and orange |
+| Ginkgo | East Asia | Golden fan-shaped crown |
+| Acacia | East Africa | Flat-topped, tall trunk |
+| Baobab | Madagascar / Africa | Massive trunk, sparse crown |
+| Dragon Blood | Socotra | Umbrella-shaped dome |
+| Araucaria | South America | Layered triangular tiers |
+| Olive | Mediterranean | Silver-green rounded canopy |
+| Banyan | South Asia | Wide canopy with aerial roots |
+| Eucalyptus | Australia | Tall, blue-green tapered |
 
 Each species has 4 growth stages (seed, sapling, young, full). Existing trees grow a little with each new prompt.
 
@@ -152,34 +125,29 @@ Each species has 4 growth stages (seed, sapling, young, full). Existing trees gr
 
 ## Viewer
 
-The viewer adapts to your terminal width — expand your terminal and new trees will spread across the full width.
+The viewer adapts to your terminal width — expand your terminal and new trees will spread across the full width. Press `Ctrl+C` to exit.
 
-Press `Ctrl+C` to exit. The viewer shows a summary of your forest when you close it.
-
-### Reading the Stats Bar
-
-Below your forest you'll see a stats bar like this:
+### Stats Bar
 
 ```
  niwaki · 42 trees · 7-day streak · ████████░░░░ next: oak [woodland]
+ add your forest to your README → niwaki badge
 ```
-
-Here's what each part means:
 
 | Segment | What it tells you |
 |---------|-------------------|
-| `42 trees` | Total trees in your forest — one planted per prompt, never deleted |
-| `7-day streak` | Consecutive days you've used Claude Code. Resets to 1 if you skip a day |
-| `wilting (2d idle)` | Appears instead of streak when you've been inactive — your forest is dying |
-| `████████░░░░` | Progress bar toward the next milestone (10, 25, 50, 100, 250, 500, 1000 trees) |
-| `next: oak` | The species of the next tree that will be planted |
-| `[woodland]` | Your current biome — evolves as your tree count grows |
+| `42 trees` | Total trees — one per prompt, never deleted |
+| `7-day streak` | Consecutive days you've used Claude Code |
+| `wilting (2d idle)` | Shown instead of streak when inactive |
+| `████████░░░░` | Progress toward next milestone (10, 25, 50, 100, 250, 500, 1000) |
+| `next: oak` | Next species in the rotation cycle (14-species loop) |
+| `[woodland]` | Current biome |
 
 ---
 
 ## Links
 
-- **bun**: [npmjs.com/package/niwaki](https://www.npmjs.com/package/niwaki)
+- **npm**: [npmjs.com/package/niwaki](https://www.npmjs.com/package/niwaki)
 - **GitHub**: [github.com/theanhgen/niwaki](https://github.com/theanhgen/niwaki)
 - **Issues**: [github.com/theanhgen/niwaki/issues](https://github.com/theanhgen/niwaki/issues)
 

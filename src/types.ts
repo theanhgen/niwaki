@@ -4,6 +4,7 @@ export interface Tree {
   growth: number
   x: number
   plantedAt: string
+  visitor?: string
 }
 
 export interface Forest {

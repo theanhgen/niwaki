@@ -610,6 +610,36 @@ eEEEEe
       { e: COLORS.eucalyptusBlue, E: COLORS.eucalyptusLight, t: COLORS.eucalyptusTrunk },
     ),
   },
+  stump: {
+    seed: parse(
+      `
+TTt
+ T
+`,
+      { T: COLORS.trunkDark, t: COLORS.trunkMid },
+    ),
+    sapling: parse(
+      `
+TTt
+ T
+`,
+      { T: COLORS.trunkDark, t: COLORS.trunkMid },
+    ),
+    young: parse(
+      `
+TTt
+ T
+`,
+      { T: COLORS.trunkDark, t: COLORS.trunkMid },
+    ),
+    full: parse(
+      `
+TTt
+ T
+`,
+      { T: COLORS.trunkDark, t: COLORS.trunkMid },
+    ),
+  },
 }
 
 function getGrowthStage(growth: number): Stage {
@@ -619,10 +649,57 @@ function getGrowthStage(growth: number): Stage {
   return "full"
 }
 
-export function getSprite(type: string, growth: number): Sprite {
+function adjustLightness(hex: string, factor: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const c = (n: number) => Math.min(255, Math.max(0, Math.round(n * factor))).toString(16).padStart(2, "0")
+  return `#${c(r)}${c(g)}${c(b)}`
+}
+
+export function getSprite(type: string, growth: number, variant = 0): Sprite {
   const spriteSet = SPRITES[type]
   if (!spriteSet) {
     throw new Error(`Unknown tree type: ${type}`)
   }
-  return spriteSet[getGrowthStage(growth)]
+  const sprite = spriteSet[getGrowthStage(growth)]
+  if (variant === 0) return sprite
+  const factor = variant === 1 ? 1.2 : 0.8
+  return {
+    width: sprite.width,
+    rows: sprite.rows.map((row) =>
+      row.map(([char, color]): [string, string | null] => [char, color ? adjustLightness(color, factor) : null]),
+    ),
+  }
+}
+
+const ANIMAL_SPRITES: Record<string, Sprite> = {
+  fox: parse(
+    `
+ f
+fff
+`,
+    { f: "#d4701a" },
+  ),
+  deer: parse(
+    `
+ d
+ddd
+ d
+`,
+    { d: "#a0724a" },
+  ),
+  owl: parse(
+    `
+oO
+oo
+`,
+    { o: "#7a5c3a", O: "#c8a870" },
+  ),
+}
+
+export function getAnimalSprite(type: string): Sprite {
+  const sprite = ANIMAL_SPRITES[type]
+  if (!sprite) throw new Error(`Unknown animal: ${type}`)
+  return sprite
 }

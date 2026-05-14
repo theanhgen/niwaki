@@ -23,9 +23,25 @@ function moveHome(): void {
   writeAnsi("\x1b[H")
 }
 
-function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0): void {
+const MILESTONE_VALUES = [10, 25, 50, 100, 250, 500, 1000]
+
+interface Bird {
+  x: number
+  y: number
+  speed: number
+}
+
+let birds: Bird[] = []
+let activeMilestoneText: string | undefined = undefined
+
+function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
-  process.stdout.write(renderFrame(forest, process.stdout.columns || 80, { twinkleSeed }))
+  const frame = renderFrame(forest, process.stdout.columns || 80, {
+    twinkleSeed,
+    birds,
+    milestoneText,
+  })
+  process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
 
 function delay(ms: number): Promise<void> {
@@ -35,7 +51,7 @@ function delay(ms: number): Promise<void> {
 async function animateNewTree(forest: Parameters<typeof renderFrame>[0], newTreeId: number): Promise<void> {
   const tree = forest.trees.find((entry) => entry.id === newTreeId)
   if (!tree) {
-    renderForest(forest)
+    renderForest(forest, 0, activeMilestoneText)
     return
   }
 
@@ -46,12 +62,12 @@ async function animateNewTree(forest: Parameters<typeof renderFrame>[0], newTree
 
   for (let index = 0; index < frames.length; index += 1) {
     tree.growth = frames[index]!
-    renderForest(forest, index)
+    renderForest(forest, index, activeMilestoneText)
     await delay(120)
   }
 
   tree.growth = originalGrowth
-  renderForest(forest)
+  renderForest(forest, 0, activeMilestoneText)
 }
 
 export async function viewer(): Promise<void> {
@@ -76,11 +92,36 @@ export async function viewer(): Promise<void> {
   syncWidth()
   hideCursor()
   clearScreen()
-  renderForest(forest)
+  renderForest(forest, 0, activeMilestoneText)
 
   let lastMaxId = forest.trees.reduce((max, tree) => Math.max(max, tree.id), 0)
   let lastTotalPrompts = forest.totalPrompts
   let animating = false
+
+  // Bird movement: advance each bird every 250ms, re-render if not animating
+  setInterval(() => {
+    const width = process.stdout.columns || 80
+    birds = birds.filter((b) => b.x <= width)
+    birds.forEach((b) => { b.x += b.speed })
+    if (!animating) renderForest(forest!, 0, activeMilestoneText)
+  }, 250)
+
+  // Bird spawn scheduler: 2.5–3.5 minutes between flocks
+  function scheduleBirdSpawn(): void {
+    const spawnDelay = 150000 + Math.random() * 60000
+    setTimeout(() => {
+      const width = process.stdout.columns || 80
+      const count = 1 + Math.floor(Math.random() * 3)
+      const baseX = -count
+      const y = Math.floor(Math.random() * 3)
+      const speed = 1 + Math.floor(Math.random() * 2)
+      for (let i = 0; i < count; i++) {
+        birds.push({ x: baseX + i, y, speed })
+      }
+      scheduleBirdSpawn()
+    }, spawnDelay)
+  }
+  scheduleBirdSpawn()
 
   const cleanup = (): void => {
     showCursor()
@@ -96,7 +137,7 @@ export async function viewer(): Promise<void> {
   process.stdout.on("resize", () => {
     syncWidth()
     clearScreen()
-    renderForest(forest!)
+    renderForest(forest!, 0, activeMilestoneText)
   })
 
   async function checkForUpdates(): Promise<void> {
@@ -111,6 +152,16 @@ export async function viewer(): Promise<void> {
     if (updated.totalPrompts === lastTotalPrompts) return
 
     const nextMaxId = updated.trees.reduce((max, tree) => Math.max(max, tree.id), 0)
+
+    // Milestone detection: check before updating forest reference
+    const oldCount = forest!.trees.length
+    const newCount = updated.trees.length
+    const crossed = MILESTONE_VALUES.find((m) => oldCount < m && newCount >= m)
+    if (crossed !== undefined) {
+      activeMilestoneText = `✦ ${crossed} trees ✦`
+      setTimeout(() => { activeMilestoneText = undefined }, 2500)
+    }
+
     forest = updated
     lastTotalPrompts = forest.totalPrompts
 
@@ -120,7 +171,7 @@ export async function viewer(): Promise<void> {
       await animateNewTree(forest, nextMaxId)
       animating = false
     } else {
-      renderForest(forest)
+      renderForest(forest, 0, activeMilestoneText)
     }
   }
 

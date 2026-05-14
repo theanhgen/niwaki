@@ -2,8 +2,12 @@ import { describe, it, expect } from "bun:test"
 import { getSprite, TREE_TYPES } from "../src/sprites.js"
 
 describe("sprites", () => {
-  it("exports all five tree types", () => {
-    expect(TREE_TYPES).toEqual(["oak", "pine", "birch", "willow", "cherry"])
+  it("exports all fourteen tree types", () => {
+    expect(TREE_TYPES).toEqual([
+      "oak", "pine", "birch", "willow", "cherry",
+      "maple", "ginkgo", "acacia", "baobab", "dragonblood",
+      "araucaria", "olive", "banyan", "eucalyptus",
+    ])
   })
 
   it("returns sprites for every growth tier", () => {

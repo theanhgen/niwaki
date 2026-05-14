@@ -1,0 +1,33 @@
+{
+  "name": "niwaki",
+  "version": "1.0.6",
+  "description": "Grow a forest in your terminal every time you use Claude Code",
+  "type": "module",
+  "bin": {
+    "niwaki": "./dist/bin/niwaki.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build bin/niwaki.ts --outfile dist/bin/niwaki.js --target node --minify",
+    "dev": "bun run bin/niwaki.ts",
+    "test": "bun test"
+  },
+  "keywords": [
+    "cli",
+    "terminal",
+    "forest",
+    "claude-code",
+    "pixel-art",
+    "ascii-art",
+    "hooks"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.4.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

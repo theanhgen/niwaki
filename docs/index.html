@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Niwaki | Grow a Forest with Agents</title>
+<meta name="description" content="Niwaki is a CLI that plants pixel-art trees in your terminal every time you use AI agents."/>
+<meta property="og:title" content="Niwaki | Grow a Forest with Agents"/>
+<meta property="og:description" content="A CLI that plants pixel-art trees in your terminal every time you use AI agents. Watch your forest grow as you build."/>
+<meta property="og:site_name" content="Niwaki"/>
+<meta property="og:type" content="website"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Niwaki | Grow a Forest with Agents"/>
+<meta name="twitter:description" content="A CLI that plants pixel-art trees in your terminal every time you use AI agents."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#faf9f7;--bg-up:#fff;--border:#1111111a;--border-s:#1111110d;--tx1:#18160f;--tx2:#55504a;--tx3:#8c8780;--green:#4a7c59;--green-l:#e6f0ea;--amber:#f5a50b;--btn:#18160f;--btnx:#faf9f7;--term:#0d0e10;--term-border:#ffffff0f;--font:"Manrope",sans-serif;--mono:"IBM Plex Mono",monospace}*,:before,:after{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--tx1);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.5}a{color:inherit;text-decoration:none}button,code{font:inherit}pre{font-family:var(--mono)}.shell{width:100%}.shell-inner{width:min(960px,100% - 56px);margin:0 auto}.topbar{justify-content:space-between;align-items:center;margin-bottom:48px;padding:36px 0 0;animation:.52s both up;display:flex}.brand{letter-spacing:.015em;color:var(--tx1);font-size:.95rem;font-weight:600}.brand:hover{color:var(--green)}.nav-links{align-items:center;gap:22px;display:flex}.nav-npm{font-family:var(--mono);background:var(--green-l);color:var(--green);border-radius:999px;padding:3px 10px;font-size:.72rem;font-weight:500;transition:background .16s}.nav-npm:hover{background:#d2e8da}.nav-link{color:var(--tx3);font-size:.85rem;transition:color .16s}.nav-link:hover{color:var(--tx1)}.nav-icon{align-items:center;display:flex}.hero{text-align:center;max-width:640px;margin:0 auto 64px;animation:.52s .2s both up}.hero h1{letter-spacing:-.05em;color:var(--tx1);text-wrap:balance;font-size:clamp(3.2rem,6.5vw,5.2rem);font-weight:500;line-height:1.06}.hero-forest{color:var(--green)}.hero-sub{max-width:480px;color:var(--tx2);text-wrap:pretty;margin:22px auto 0;font-size:1.05rem;line-height:1.68}.kicker{letter-spacing:.22em;text-transform:uppercase;color:var(--green);margin-bottom:20px;font-size:.7rem;font-weight:600}.kicker.centered{text-align:center}.hero-terminal{max-width:780px;margin:0 auto 28px;animation:.52s .1s both up}.vsc-frame{background:var(--term);border:1px solid #ffffff12;border-radius:10px;overflow:hidden;box-shadow:0 0 0 1px #0006,0 24px 64px #00000080}.vsc-tabs{scrollbar-width:none;background:#12141a;border-bottom:1px solid #ffffff0d;align-items:center;gap:0;padding:0 14px;display:flex;overflow-x:auto}.vsc-tabs::-webkit-scrollbar{display:none}.vsc-dots{flex-shrink:0;gap:6px;margin-right:16px;display:flex}.dot{border-radius:50%;width:10px;height:10px}.dot-r{background:#ff5f57}.dot-y{background:#ffbd2e}.dot-g{background:#28c941}.vsc-tab{font-family:var(--mono);color:#ffffff4d;white-space:nowrap;cursor:pointer;border-bottom:2px solid #0000;flex-shrink:0;padding:9px 14px;font-size:.7rem;transition:color .14s}.vsc-tab:hover{color:#ffffff8c}.vsc-tab-active{color:#ffffffd9;border-bottom-color:var(--green)}.vsc-tab-spacer{flex:1;min-width:8px}.vsc-tab-actions{flex-shrink:0;gap:0;display:flex}.vsc-tab-actions span{font-family:var(--mono);color:#ffffff40;cursor:pointer;white-space:nowrap;padding:6px 7px;font-size:.64rem;transition:color .14s}.vsc-tab-actions span:hover{color:#ffffff80}.vsc-body{background:var(--term);color:#ffffff8c;font-family:var(--mono);padding:16px 20px 14px;font-size:.82rem;line-height:1.5}.tl{margin-bottom:3px}.tl-dim{color:#ffffff47;margin-bottom:2px}.tl-p{color:#5b9a4a;margin-right:7px}.tl-cursor{vertical-align:text-bottom;background:#ffffff8c;width:7px;height:13px;margin-left:3px;animation:1.1s step-start infinite blink;display:inline-block}.forest-wrap{width:calc(100% + 40px);margin:8px -20px;overflow:hidden}.tl-status{font-family:var(--mono);color:#ffffff80;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 7px;font-size:.8rem;display:flex}.st-brand{color:var(--amber);font-weight:500}.st-sep{color:#fff3}.st-text{color:#ffffff80}.st-bar{color:#6cb95e;letter-spacing:-.5px}.st-next{color:#fffc}.st-biome{color:#ffffff40}.mid-grid{grid-template-columns:1fr 1fr;align-items:start;gap:64px;margin-bottom:80px;animation:.52s .28s both up;display:grid}.install{padding-top:2px}.cmd-list{gap:10px;list-style:none;display:grid}.cmd-item{align-items:center;gap:10px;display:flex}.cmd-num{background:var(--green-l);width:22px;height:22px;color:var(--green);border-radius:50%;flex-shrink:0;justify-content:center;align-items:center;font-size:.7rem;font-weight:700;display:flex}.cmd-code{background:var(--bg-up);border:1px solid var(--border-s);font-family:var(--mono);color:var(--tx1);white-space:nowrap;border-radius:9px;flex:1;padding:12px 14px;font-size:.83rem;display:block;overflow-x:auto}.cmd-btn{border:1px solid var(--border);background:var(--bg-up);min-width:62px;color:var(--tx2);cursor:pointer;border-radius:8px;flex-shrink:0;padding:11px 12px;font-size:.78rem;font-weight:500;transition:background .15s,border-color .15s,color .15s}.cmd-btn:hover{background:var(--btn);color:var(--btnx);border-color:var(--btn)}.how{padding-top:2px}.how-grid{gap:14px;display:grid}.how-card{border:1px solid var(--border-s);background:var(--bg-up);border-radius:10px;padding:18px 20px}.how-n{font-family:var(--mono);color:var(--green);letter-spacing:.06em;margin-bottom:7px;font-size:.68rem;font-weight:500;display:block}.how-title{color:var(--tx1);letter-spacing:-.015em;margin-bottom:5px;font-size:.92rem;font-weight:600}.how-body{color:var(--tx2);text-wrap:pretty;font-size:.84rem;line-height:1.65}.biomes{margin-bottom:80px;animation:.52s .28s both up}.biomes-sub{text-align:center;color:var(--tx2);text-wrap:pretty;max-width:420px;margin:0 auto 32px;font-size:.96rem;line-height:1.65}.biomes-grid{grid-template-columns:repeat(5,1fr);gap:12px;display:grid}.biome-card{border:1px solid #0000;border-radius:10px;flex-direction:column;gap:6px;padding:22px 18px;transition:transform .16s;display:flex}.biome-card:hover{transform:translateY(-2px)}.biome-range{font-family:var(--mono);opacity:.7;font-size:.68rem;font-weight:500}.biome-name{color:#ffffffd9;letter-spacing:-.01em;font-size:.9rem;font-weight:600}.biome-label{color:#ffffff61;font-size:.76rem;line-height:1.4}.biome-prog{gap:4px;margin-top:8px;display:flex}.biome-pip{border-radius:999px;flex:1;height:3px}.species{margin-bottom:80px;animation:.52s .32s both up}.species-grid{grid-template-columns:repeat(5,1fr);gap:12px;display:grid}.sp-card{border:1px solid var(--border-s);background:var(--bg-up);border-radius:10px;transition:border-color .16s,box-shadow .16s;overflow:hidden}.sp-card:hover{border-color:var(--border);box-shadow:0 4px 18px #0000000f}.sp-preview{background:#0c0d10;justify-content:center;padding:10px 8px 4px;display:flex}.sp-info{padding:11px 13px 13px}.sp-name{color:var(--tx1);letter-spacing:-.01em;margin-bottom:2px;font-size:.86rem;font-weight:600;display:block}.sp-desc{color:var(--tx3);font-size:.74rem;line-height:1.45;display:block}.footer{border-top:1px solid var(--border-s);flex-wrap:wrap;justify-content:center;align-items:center;gap:10px;padding:28px 0 72px;animation:.52s .36s both up;display:flex}.footer-brand{font-size:.85rem;font-weight:600}.footer-sep{color:var(--border);-webkit-user-select:none;user-select:none}.footer-link{color:var(--tx3);font-size:.82rem;transition:color .15s}.footer-link:hover{color:var(--tx1)}.footer-muted{color:var(--tx3);font-size:.82rem}@keyframes up{0%{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes blink{0%,to{opacity:1}50%{opacity:0}}@media (max-width:780px){.shell-inner{width:min(100% - 40px,960px)}.topbar{margin-bottom:52px;padding-top:28px}.hero{margin-bottom:48px}.mid-grid{grid-template-columns:1fr;gap:48px}.biomes-grid{grid-template-columns:repeat(3,1fr)}.biome-card:nth-child(n+4){display:none}.species-grid{grid-template-columns:repeat(3,1fr)}.vsc-tab-actions{display:none}}@media (max-width:520px){.hero h1{font-size:2.4rem}.biomes-grid{grid-template-columns:1fr 1fr}.biome-card:nth-child(n+4){display:flex}.biome-card:nth-child(5){display:none}.species-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="shell">
+<div class="shell-inner">
+
+<header class="topbar">
+  <a href="#" class="brand">Niwaki</a>
+  <nav class="nav-links">
+    <a href="https://www.npmjs.com/package/niwaki" target="_blank" rel="noopener noreferrer" class="nav-npm">npm</a>
+    <a href="https://github.com/Varun2009178/honeytree" target="_blank" rel="noopener noreferrer" class="nav-link nav-icon" aria-label="GitHub">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+    </a>
+  </nav>
+</header>
+
+<div class="hero-terminal">
+  <div class="vsc-frame">
+    <div class="vsc-tabs">
+      <div class="vsc-dots">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+      </div>
+      <span class="vsc-tab">Problems</span>
+      <span class="vsc-tab">Output</span>
+      <span class="vsc-tab">Debug Console</span>
+      <span class="vsc-tab vsc-tab-active">Terminal</span>
+      <span class="vsc-tab">Ports</span>
+      <div class="vsc-tab-spacer"></div>
+      <div class="vsc-tab-actions">
+        <span>⊞ node ∨</span><span>＋</span><span>⊡</span><span>⊟</span><span>···</span>
+      </div>
+    </div>
+    <div class="vsc-body">
+      <div class="tl"><span class="tl-p">$</span> niwaki</div>
+      <div class="tl tl-dim">watching ~/.niwaki/forest.json</div>
+      <div class="forest-wrap"></div>
+      <div class="tl-status">
+        <span class="st-brand">niwaki</span>
+        <span class="st-sep">·</span>
+        <span class="st-text">13 trees</span>
+        <span class="st-sep">·</span>
+        <span class="st-text">1 day</span>
+        <span class="st-sep">·</span>
+        <span class="st-bar">████<span style="color:#3d3d3d">░░░░░░░░</span></span>
+        <span class="st-text">next: <span class="st-next">willow</span></span>
+        <span class="st-biome">[grove]</span>
+      </div>
+      <div class="tl"><span class="tl-p">$</span><span class="tl-cursor"></span></div>
+    </div>
+  </div>
+</div>
+
+<section class="hero">
+  <h1>Grow a <span class="hero-forest">forest</span><br/>with agents.</h1>
+  <p class="hero-sub">Niwaki plants a pixel-art tree in your terminal after every AI agent prompt. Watch a forest emerge as you build.</p>
+</section>
+
+<div class="mid-grid">
+  <div class="install">
+    <p class="kicker">Quick start</p>
+    <ol class="cmd-list">
+      <li class="cmd-item">
+        <span class="cmd-num">1</span>
+        <code class="cmd-code">npm install -g niwaki</code>
+        <button class="cmd-btn">Copy</button>
+      </li>
+      <li class="cmd-item">
+        <span class="cmd-num">2</span>
+        <code class="cmd-code">niwaki init</code>
+        <button class="cmd-btn">Copy</button>
+      </li>
+      <li class="cmd-item">
+        <span class="cmd-num">3</span>
+        <code class="cmd-code">niwaki</code>
+        <button class="cmd-btn">Copy</button>
+      </li>
+    </ol>
+  </div>
+  <div class="how">
+    <p class="kicker">How it works</p>
+    <div class="how-grid">
+      <div class="how-card">
+        <span class="how-n">01</span>
+        <h3 class="how-title">Install &amp; init</h3>
+        <p class="how-body">One global install. niwaki init registers a Stop hook inside Claude Code — no manual steps needed.</p>
+      </div>
+      <div class="how-card">
+        <span class="how-n">02</span>
+        <h3 class="how-title">Build with agents</h3>
+        <p class="how-body">Every time an AI agent completes a response, a new tree is planted automatically in your forest.</p>
+      </div>
+      <div class="how-card">
+        <span class="how-n">03</span>
+        <h3 class="how-title">Watch it grow</h3>
+        <p class="how-body">Run the viewer in a separate terminal. Your forest grows in real time, biome by biome, as you ship.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="biomes">
+  <p class="kicker centered">Biomes</p>
+  <p class="biomes-sub">Your forest evolves as it grows. The sky, ground, and atmosphere change with every milestone.</p>
+  <div class="biomes-grid">
+    <div class="biome-card" style="background:#1c2a1a;border-color:#2a3a28">
+      <span class="biome-range" style="color:#4a6a44">0–9</span>
+      <span class="biome-name">Clearing</span>
+      <span class="biome-label">Sparse, quiet</span>
+      <div class="biome-prog">
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+      </div>
+    </div>
+    <div class="biome-card" style="background:#1a3520;border-color:#22492d">
+      <span class="biome-range" style="color:#22492d">10–24</span>
+      <span class="biome-name">Grove</span>
+      <span class="biome-label">Taking root</span>
+      <div class="biome-prog">
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+      </div>
+    </div>
+    <div class="biome-card" style="background:#163820;border-color:#1e4a28">
+      <span class="biome-range" style="color:#1e4a28">25–49</span>
+      <span class="biome-name">Woodland</span>
+      <span class="biome-label">Dense canopy</span>
+      <div class="biome-prog">
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+      </div>
+    </div>
+    <div class="biome-card" style="background:#103d22;border-color:#1a5230">
+      <span class="biome-range" style="color:#1a5230">50–99</span>
+      <span class="biome-name">Old Growth</span>
+      <span class="biome-label">Deep &amp; warm</span>
+      <div class="biome-prog">
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:rgba(255,255,255,0.1)"></span>
+      </div>
+    </div>
+    <div class="biome-card" style="background:#0c4422;border-color:#165a32">
+      <span class="biome-range" style="color:#165a32">100+</span>
+      <span class="biome-name">Ancient Forest</span>
+      <span class="biome-label">Richest palette</span>
+      <div class="biome-prog">
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+        <span class="biome-pip" style="background:#5b9a4a"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="species">
+  <p class="kicker centered">Five species</p>
+  <div class="species-grid">
+    <div class="sp-card">
+      <div class="sp-preview">
+        <pre style="font-family:&quot;IBM Plex Mono&quot;,monospace;font-size:11px;line-height:1.3;margin:0;padding:0;background:transparent"><div><span>      </span><span style="color:#5d5d5d">·</span><span> </span><span style="color:#5d5d5d">.</span><span>  </span><span style="color:#6a6a55">·</span><span>  </span></div><div><span>              </span></div><div><span>              </span></div><div><span>  </span><span style="color:#5d5d5d">.</span><span>           </span></div><div><span>              </span></div><div><span>   </span><span style="color:#5b9a4a">██</span><span>         </span></div><div><span>    </span><span style="color:#5b9a4a">█</span><span style="color:#3f7132">████</span><span>     </span></div><div><span>   </span><span style="color:#5b9a4a">██</span><span style="color:#3f7132">████</span><span style="color:#5b9a4a">██</span><span>   </span></div><div><span>    </span><span style="color:#5b9a4a">█</span><span style="color:#3f7132">████</span><span style="color:#5b9a4a">█</span><span>    </span></div><div><span>      </span><span style="color:#8e6238">██</span><span>      </span></div><div><span>      </span><span style="color:#8e6238">██</span><span>      </span></div><div><span style="color:#1e4a28">██████████████</span></div><div><span style="color:#163a1e">██████████████</span></div></pre>
+      </div>
+      <div class="sp-info"><span class="sp-name">Oak</span><span class="sp-desc">Wide, rounded canopy</span></div>
+    </div>
+    <div class="sp-card">
+      <div class="sp-preview">
+        <pre style="font-family:&quot;IBM Plex Mono&quot;,monospace;font-size:11px;line-height:1.3;margin:0;padding:0;background:transparent"><div><span>            </span></div><div><span>    </span><span style="color:#6a6a55">.</span><span>       </span></div><div><span>           </span><span style="color:#4d4d4d">✧</span></div><div><span>  </span><span style="color:#2d5b29">█</span><span>         </span></div><div><span>     </span><span style="color:#2d5b29">███</span><span>    </span></div><div><span>    </span><span style="color:#2d5b29">█</span><span style="color:#3f7132">███</span><span style="color:#2d5b29">█</span><span>   </span></div><div><span>   </span><span style="color:#2d5b29">█</span><span style="color:#3f7132">█████</span><span style="color:#2d5b29">█</span><span>  </span></div><div><span>  </span><span style="color:#2d5b29">██</span><span style="color:#3f7132">██████</span><span>  </span></div><div><span>   </span><span style="color:#2d5b29">█</span><span style="color:#3f7132">█████</span><span>   </span></div><div><span>      </span><span style="color:#6f4c2f">█</span><span>     </span></div><div><span>      </span><span style="color:#6f4c2f">█</span><span>     </span></div><div><span style="color:#1e4a28">████████████</span></div><div><span style="color:#163a1e">████████████</span></div></pre>
+      </div>
+      <div class="sp-info"><span class="sp-name">Pine</span><span class="sp-desc">Tall, triangular shape</span></div>
+    </div>
+    <div class="sp-card">
+      <div class="sp-preview">
+        <pre style="font-family:&quot;IBM Plex Mono&quot;,monospace;font-size:11px;line-height:1.3;margin:0;padding:0;background:transparent"><div><span>             </span></div><div><span>             </span></div><div><span>             </span></div><div><span>             </span></div><div><span>             </span></div><div><span>   </span><span style="color:#a4e28d">██</span><span>        </span></div><div><span>    </span><span style="color:#a4e28d">█</span><span style="color:#7cc96a">███</span><span style="color:#a4e28d">█</span><span>    </span></div><div><span>   </span><span style="color:#7cc96a">███</span><span style="color:#a4e28d">██</span><span style="color:#7cc96a">██</span><span>   </span></div><div><span>    </span><span style="color:#a4e28d">█</span><span style="color:#7cc96a">███</span><span style="color:#a4e28d">█</span><span>    </span></div><div><span>      </span><span style="color:#d9d6d2">██</span><span>     </span></div><div><span>      </span><span style="color:#d9d6d2">██</span><span>     </span></div><div><span style="color:#1e4a28">█████████████</span></div><div><span style="color:#163a1e">█████████████</span></div></pre>
+      </div>
+      <div class="sp-info"><span class="sp-name">Birch</span><span class="sp-desc">Light trunk, bright leaves</span></div>
+    </div>
+    <div class="sp-card">
+      <div class="sp-preview">
+        <pre style="font-family:&quot;IBM Plex Mono&quot;,monospace;font-size:11px;line-height:1.3;margin:0;padding:0;background:transparent"><div><span>               </span></div><div><span>    </span><span style="color:#4d4d4d">·</span><span>          </span></div><div><span>  </span><span style="color:#5d5d5d">✧</span><span>            </span></div><div><span>     </span><span style="color:#5d5d5d">✦</span><span>        </span><span style="color:#6a6a55">·</span></div><div><span>  </span><span style="color:#7cc96a">█████</span><span>        </span></div><div><span>   </span><span style="color:#7cc96a">████████</span><span>    </span></div><div><span>  </span><span style="color:#7cc96a">██</span><span> </span><span style="color:#7cc96a">█████</span><span> </span><span style="color:#7cc96a">██</span><span>  </span></div><div><span>  </span><span style="color:#7cc96a">██</span><span>  </span><span style="color:#7cc96a">███</span><span>  </span><span style="color:#7cc96a">██</span><span>  </span></div><div><span>  </span><span style="color:#7cc96a">██</span><span>       </span><span style="color:#7cc96a">██</span><span>  </span></div><div><span>      </span><span style="color:#8e6238">██</span><span>       </span></div><div><span>      </span><span style="color:#8e6238">██</span><span>       </span></div><div><span style="color:#1e4a28">███████████████</span></div><div><span style="color:#163a1e">███████████████</span></div></pre>
+      </div>
+      <div class="sp-info"><span class="sp-name">Willow</span><span class="sp-desc">Drooping, wide canopy</span></div>
+    </div>
+    <div class="sp-card">
+      <div class="sp-preview">
+        <pre style="font-family:&quot;IBM Plex Mono&quot;,monospace;font-size:11px;line-height:1.3;margin:0;padding:0;background:transparent"><div><span>            </span></div><div><span>    </span><span style="color:#6a6a55">.</span><span>       </span></div><div><span>           </span><span style="color:#4d4d4d">✧</span></div><div><span>            </span></div><div><span>            </span></div><div><span>  </span><span style="color:#f0b7cf">█</span><span style="color:#de93b8">█</span><span style="color:#f0b7cf">█</span><span>       </span></div><div><span>   </span><span style="color:#f0b7cf">█</span><span style="color:#de93b8">████</span><span style="color:#f0b7cf">█</span><span>   </span></div><div><span>  </span><span style="color:#f0b7cf">█</span><span style="color:#de93b8">██</span><span style="color:#f0b7cf">█</span><span style="color:#de93b8">███</span><span style="color:#f0b7cf">█</span><span>  </span></div><div><span>   </span><span style="color:#f0b7cf">█</span><span style="color:#de93b8">███</span><span style="color:#f0b7cf">██</span><span>   </span></div><div><span>     </span><span style="color:#b18552">██</span><span>     </span></div><div><span>     </span><span style="color:#b18552">██</span><span>     </span></div><div><span style="color:#1e4a28">████████████</span></div><div><span style="color:#163a1e">████████████</span></div></pre>
+      </div>
+      <div class="sp-info"><span class="sp-name">Cherry</span><span class="sp-desc">Pink blossoms</span></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <span class="footer-brand">Niwaki</span>
+  <span class="footer-sep">·</span>
+  <a href="https://github.com/Varun2009178/honeytree" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+  <span class="footer-sep">·</span>
+  <a href="https://www.npmjs.com/package/niwaki" target="_blank" rel="noopener noreferrer" class="footer-link">npm</a>
+  <span class="footer-sep">·</span>
+  <span class="footer-muted">MIT license · free &amp; open source</span>
+</footer>
+
+</div>
+</div>
+
+<script>
+(function () {
+  // Forest renderer
+  var W = 92, H = 12;
+  var G = [];
+  for (var r = 0; r < H; r++) {
+    G.push([]);
+    for (var c = 0; c < W; c++) G[r].push([' ', null]);
+  }
+
+  function set(r, c, ch, col) {
+    if (r >= 0 && r < H && c >= 0 && c < W) G[r][c] = [ch, col];
+  }
+
+  function str(r, c, s, col) {
+    for (var i = 0; i < s.length; i++) set(r, c + i, s[i], col);
+  }
+
+  // Stars
+  var STARS = [
+    [0, 5, '\xb7', '#5d5d5d'], [0, 30, '.', '#4d4d4d'], [0, 55, '\xb7', '#6a6a55'], [0, 75, '\xb7', '#5d5d5d'],
+    [1, 18, '✧', '#4d4d4d'], [1, 47, '.', '#5d5d5d'], [1, 67, '\xb7', '#6a6a55'],
+    [2, 38, '\xb7', '#5d5d5d'], [2, 88, '.', '#4d4d4d']
+  ];
+  for (var i = 0; i < STARS.length; i++) {
+    set(STARS[i][0], STARS[i][1], STARS[i][2], STARS[i][3]);
+  }
+
+  // Sprite definitions: array of {dr, ops:[dc, text, color]}
+  // dr = row offset from startRow
+  var OL = '#5b9a4a', OD = '#3f7132', OT = '#8e6238';
+  var OAK = [
+    {dr:0, ops:[[3,'██',OL]]},
+    {dr:1, ops:[[4,'█',OL],[5,'████',OD]]},
+    {dr:2, ops:[[3,'██',OL],[5,'████',OD],[9,'██',OL]]},
+    {dr:3, ops:[[4,'█',OL],[5,'████',OD],[9,'█',OL]]},
+    {dr:4, ops:[[6,'██',OT]]},
+    {dr:5, ops:[[6,'██',OT]]}
+  ];
+
+  var PL = '#2d5b29', PD = '#3f7132', PT = '#6f4c2f';
+  var PINE = [
+    {dr:0, ops:[[2,'█',PL]]},
+    {dr:1, ops:[[5,'███',PL]]},
+    {dr:2, ops:[[4,'█',PL],[5,'███',PD],[8,'█',PL]]},
+    {dr:3, ops:[[3,'█',PL],[4,'█████',PD],[9,'█',PL]]},
+    {dr:4, ops:[[2,'██',PL],[4,'██████',PD]]},
+    {dr:5, ops:[[3,'█',PL],[4,'█████',PD]]},
+    {dr:6, ops:[[6,'█',PT]]},
+    {dr:7, ops:[[6,'█',PT]]}
+  ];
+
+  var BLL = '#a4e28d', BL = '#7cc96a', BT = '#d9d6d2';
+  var BIRCH = [
+    {dr:0, ops:[[3,'██',BLL]]},
+    {dr:1, ops:[[4,'█',BLL],[5,'███',BL],[8,'█',BLL]]},
+    {dr:2, ops:[[3,'███',BL],[6,'██',BLL],[8,'██',BL]]},
+    {dr:3, ops:[[4,'█',BLL],[5,'███',BL],[8,'█',BLL]]},
+    {dr:4, ops:[[6,'██',BT]]},
+    {dr:5, ops:[[6,'██',BT]]}
+  ];
+
+  var WL = '#7cc96a', WT = '#8e6238';
+  var WILLOW = [
+    {dr:0, ops:[[2,'█████',WL]]},
+    {dr:1, ops:[[3,'████████',WL]]},
+    {dr:2, ops:[[2,'██',WL],[5,'█████',WL],[11,'██',WL]]},
+    {dr:3, ops:[[2,'██',WL],[6,'███',WL],[11,'██',WL]]},
+    {dr:4, ops:[[2,'██',WL],[11,'██',WL]]},
+    {dr:5, ops:[[6,'██',WT]]},
+    {dr:6, ops:[[6,'██',WT]]}
+  ];
+
+  var CLL = '#f0b7cf', CL = '#de93b8', CT = '#b18552';
+  var CHERRY = [
+    {dr:0, ops:[[2,'█',CLL],[3,'█',CL],[4,'█',CLL]]},
+    {dr:1, ops:[[3,'█',CLL],[4,'████',CL],[8,'█',CLL]]},
+    {dr:2, ops:[[2,'█',CLL],[3,'██',CL],[5,'█',CLL],[6,'███',CL],[9,'█',CLL]]},
+    {dr:3, ops:[[3,'█',CLL],[4,'███',CL],[7,'██',CLL]]},
+    {dr:4, ops:[[5,'██',CT]]},
+    {dr:5, ops:[[5,'██',CT]]}
+  ];
+
+  function placeTree(sprite, ox, startRow) {
+    for (var ri = 0; ri < sprite.length; ri++) {
+      var row = sprite[ri];
+      var sceneRow = startRow + row.dr;
+      for (var oi = 0; oi < row.ops.length; oi++) {
+        var op = row.ops[oi];
+        str(sceneRow, ox + op[0], op[1], op[2]);
+      }
+    }
+  }
+
+  // Trunk base (lower trunk) at scene row 9
+  // Pine (8 rows): startRow = 9 - 7 = 2
+  // Oak/Birch/Cherry (6 rows): startRow = 9 - 5 = 4
+  // Willow (7 rows): startRow = 9 - 6 = 3
+
+  placeTree(PINE,   1,  2);
+  placeTree(OAK,   13,  4);
+  placeTree(CHERRY,28,  4);
+  placeTree(BIRCH, 41,  4);
+  placeTree(WILLOW,55,  3);
+  placeTree(OAK,   72,  4);
+  placeTree(PINE,  84,  2);
+
+  // Ground rows
+  var GD = '#163a1e', GG = '#1e4a28';
+  for (var c = 0; c < W; c++) {
+    set(10, c, '█', GD);
+    set(11, c, '█', GG);
+  }
+
+  // Render to HTML
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  var html = '';
+  for (var r = 0; r < H; r++) {
+    var line = '';
+    var ci = 0;
+    while (ci < G[r].length) {
+      var cell = G[r][ci];
+      var ch = cell[0], col = cell[1];
+      var j = ci + 1;
+      while (j < G[r].length && G[r][j][1] === col) j++;
+      var text = '';
+      for (var k = ci; k < j; k++) text += G[r][k][0];
+      if (col) {
+        line += '<span style="color:' + col + '">' + esc(text) + '</span>';
+      } else {
+        line += esc(text);
+      }
+      ci = j;
+    }
+    html += '<div>' + line + '</div>';
+  }
+
+  var pre = document.createElement('pre');
+  pre.style.cssText = 'font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:1.3;margin:0;padding:6px 20px 4px;background:transparent;overflow:hidden';
+  pre.innerHTML = html;
+  var wrap = document.querySelector('.forest-wrap');
+  if (wrap) wrap.appendChild(pre);
+
+  // Copy buttons
+  document.querySelectorAll('.cmd-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var code = btn.previousElementSibling.textContent;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(code).then(function() {
+          var orig = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(function() { btn.textContent = orig; }, 1500);
+        });
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

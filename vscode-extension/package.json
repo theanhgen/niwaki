@@ -1,0 +1,52 @@
+{
+  "name": "niwaki",
+  "displayName": "Niwaki",
+  "description": "Grow a forest every time your AI coding tool generates code",
+  "version": "0.1.0",
+  "publisher": "varunnukala",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "niwaki.plant",
+        "title": "Niwaki: Plant Tree"
+      }
+    ],
+    "configuration": {
+      "title": "Niwaki",
+      "properties": {
+        "niwaki.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Niwaki"
+        },
+        "niwaki.autoDetect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically detect AI-generated code insertions"
+        },
+        "niwaki.minLines": {
+          "type": "number",
+          "default": 3,
+          "minimum": 2,
+          "description": "Minimum number of inserted lines to count as an AI completion"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc",
+    "watch": "tsc -watch"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.0"
+  },
+  "license": "MIT"
+}

@@ -344,7 +344,7 @@ export function renderFrame(
   // 1. Time of day + season
   const now = new Date()
   const { period, blend } = getTimeOfDay(now)
-  const season = getSeason(now)
+  const season = getSeason(now.getMonth())
 
   // 2. Fill sky gradient
   for (let y = 0; y < SKY_ROWS; y++) {
@@ -398,6 +398,16 @@ export function renderFrame(
     compositeSprite(buffer, getSprite(tree.type, tree.growth, tree.id % 3), tree.x, treeBaseY)
   }
 
+  // 6b. Composite animal visitors
+  for (const tree of forest.trees) {
+    if (!tree.visitor) continue
+    const treeSprite = getSprite(tree.type, tree.growth, tree.id % 3)
+    const sideOffset = Math.floor(treeSprite.width / 2) + 2
+    try {
+      compositeSprite(buffer, getAnimalSprite(tree.visitor), tree.x + sideOffset, treeBaseY)
+    } catch {}
+  }
+
   // 7. Birds
   for (const bird of options.birds ?? []) {
     if (bird.y >= 0 && bird.y < SKY_ROWS && bird.x >= 0 && bird.x < width) {
@@ -413,16 +423,11 @@ export function renderFrame(
   for (let y = 0; y < SCENE_HEIGHT - SPACER_ROWS - STATS_ROWS - CTA_ROWS; y += 1) {
     let line = ""
     for (const cell of buffer[y]!) {
-      const color = (() => {
-        let c = cell.color
-        if (!c) return null
-        if (y >= SKY_ROWS && season !== "summer") c = seasonColor(c, season)
-        if (wilt > 0 && y >= SKY_ROWS) c = wiltColor(c, wilt)
-        return c
-      })()
-      if (!color) {
+      if (!cell.color) {
         line += cell.char
       } else {
+        let color = seasonTintColor(cell.color, season)
+        if (wilt > 0 && y >= SKY_ROWS) color = wiltColor(color, wilt)
         line += chalk.hex(color)(cell.char)
       }
     }
@@ -461,7 +466,7 @@ export function buildScene(forest: Forest, width: number): { buffer: Grid; biome
   // Time of day + season
   const now = new Date()
   const { period, blend } = getTimeOfDay(now)
-  const season = getSeason(now)
+  const season = getSeason(now.getMonth())
 
   // Fill sky gradient
   for (let y = 0; y < SKY_ROWS; y++) {
@@ -505,15 +510,12 @@ export function buildScene(forest: Forest, width: number): { buffer: Grid; biome
 
   applyFog(buffer, wilt, w)
 
-  // Apply season + wilt to tree/ground cells (unconditional pass)
+  // Apply wilt to tree/ground cells (unconditional pass)
   for (let y = SKY_ROWS; y < sceneRows; y += 1) {
     for (let x = 0; x < w; x += 1) {
       const cell = buffer[y]![x]!
-      if (cell.color) {
-        let c = cell.color
-        if (season !== "summer") c = seasonColor(c, season)
-        if (wilt > 0) c = wiltColor(c, wilt)
-        cell.color = c
+      if (cell.color && wilt > 0) {
+        cell.color = wiltColor(cell.color, wilt)
       }
     }
   }

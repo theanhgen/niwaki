@@ -1,10 +1,10 @@
 {
   "name": "niwaki",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Grow a forest in your terminal every time you use Claude Code",
   "type": "module",
   "bin": {
-    "niwaki": "./dist/bin/niwaki.js"
+    "niwaki": "dist/bin/niwaki.js"
   },
   "files": [
     "dist"

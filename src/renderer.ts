@@ -333,13 +333,14 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; milestoneText?: string } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; milestoneText?: string; isRaining?: boolean } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
   const groundStart = SKY_ROWS + TREE_ROWS
   const biome = getBiome(forest.trees.length)
   const wilt = getWiltFactor(forest.lastActiveDate)
+  const effectiveWilt = options.isRaining ? wilt * 0.3 : wilt
 
   // 1. Time of day + season
   const now = new Date()
@@ -415,8 +416,68 @@ export function renderFrame(
     }
   }
 
-  // 8. Fog
-  applyFog(buffer, wilt, width)
+  // 8a. Undergrowth — sparse details between tree trunks
+  const undergrowthY = groundStart - 1
+  for (let x = 0; x < width; x++) {
+    if (buffer[undergrowthY]![x]?.color !== null) continue
+    const h = hash(x * 71 + forest.trees.length * 17 + 999)
+    if (h % 5 !== 0) continue
+    const variant = h % 6
+    const parts = [
+      { char: ",", color: "#4a7030" },
+      { char: ".", color: "#5a4a30" },
+      { char: "♣", color: "#3a6228" },
+      { char: "·", color: "#6a5030" },
+    ] as const
+    if (variant < 4) buffer[undergrowthY]![x] = parts[variant]!
+    // variant 4-5 = empty gap (keeps it natural)
+  }
+
+  // Autumn fallen leaves scattered in lower tree zone
+  if (season === "autumn") {
+    for (let x = 0; x < width; x++) {
+      const h = hash(x * 83 + 4444)
+      if (h % 9 !== 0) continue
+      const ly = SKY_ROWS + TREE_ROWS - 2 + (h % 2)
+      if (buffer[ly]![x]?.color !== null) continue
+      const leafColors = ["#c4701a", "#e8a020", "#d45010"] as const
+      buffer[ly]![x] = { char: "·", color: leafColors[h % 3]! }
+    }
+  }
+
+  // 8b. Fireflies — night and dusk only, drift with twinkle seed
+  if (period === "night" || period === "dusk") {
+    const seed = options.twinkleSeed ?? 0
+    const count = Math.max(3, Math.floor(width * 0.06))
+    for (let i = 0; i < count; i++) {
+      const h = hash(i * 53 + seed * 97 + 1234)
+      const x = h % width
+      const y = SKY_ROWS + 1 + (hash(h + 7) % (TREE_ROWS - 2))
+      if (buffer[y]![x]?.color !== null) continue
+      const brightness = hash(h + 13) % 3
+      const colors = ["#3a6218", "#88c830", "#c8e850"] as const
+      const chars = ["·", "·", "✦"] as const
+      buffer[y]![x] = { char: chars[brightness]!, color: colors[brightness]! }
+    }
+  }
+
+  // 8c. Rain drops
+  if (options.isRaining) {
+    const seed = options.twinkleSeed ?? 0
+    const dropCount = Math.floor(width * 0.18)
+    for (let i = 0; i < dropCount; i++) {
+      const h = hash(i * 37 + seed * 113 + 5555)
+      const x = h % width
+      const y = hash(h + 3) % (SKY_ROWS + TREE_ROWS)
+      const cell = buffer[y]![x]
+      if (!cell) continue
+      if (y >= SKY_ROWS && cell.color !== null && hash(h + 9) % 3 !== 0) continue
+      buffer[y]![x] = { char: "|", color: "#4a7a9a" }
+    }
+  }
+
+  // 8d. Fog
+  applyFog(buffer, effectiveWilt, width)
 
   // 9. Output loop with season + wilt color composition
   const lines: string[] = []
@@ -427,7 +488,7 @@ export function renderFrame(
         line += cell.char
       } else {
         let color = seasonTintColor(cell.color, season)
-        if (wilt > 0 && y >= SKY_ROWS) color = wiltColor(color, wilt)
+        if (effectiveWilt > 0 && y >= SKY_ROWS) color = wiltColor(color, effectiveWilt)
         line += chalk.hex(color)(cell.char)
       }
     }

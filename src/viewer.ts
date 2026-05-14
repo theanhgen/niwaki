@@ -33,6 +33,8 @@ interface Bird {
 
 let birds: Bird[] = []
 let activeMilestoneText: string | undefined = undefined
+let isRaining = false
+let rainUntil = 0
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -40,6 +42,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     twinkleSeed,
     birds,
     milestoneText,
+    isRaining,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -122,6 +125,17 @@ export async function viewer(): Promise<void> {
     }, spawnDelay)
   }
   scheduleBirdSpawn()
+
+  // Rain tick: check every 90s, 20% chance to start a 3–10 min shower
+  setInterval(() => {
+    const now = Date.now()
+    if (isRaining && now > rainUntil) {
+      isRaining = false
+    } else if (!isRaining && Math.random() < 0.20) {
+      isRaining = true
+      rainUntil = now + (3 + Math.random() * 7) * 60 * 1000
+    }
+  }, 90 * 1000)
 
   const cleanup = (): void => {
     showCursor()

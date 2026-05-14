@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -366,6 +366,23 @@ export function renderFrame(
     const skyColor = getSkyColor(y, period, blend)
     for (let x = 0; x < width; x++) {
       buffer[y]![x] = { char: "█", color: skyColor }
+    }
+  }
+
+  // 2a. Aurora borealis — winter nights only, curtain shifts with twinkle seed
+  if (season === "winter" && period === "night") {
+    const seed = options.twinkleSeed ?? 0
+    const auroraColors = ["#205a38", "#3a9a50", "#4cb870", "#285a90", "#7030a8"] as const
+    for (let x = 0; x < width; x++) {
+      const wave = Math.sin(x * 0.28 + seed * 0.45)  // ripple shifts with seed
+      const h = hash(x * 17 + seed * 5 + 33333)
+      if (h % 3 === 0) continue  // ~33% skip = sparse curtain
+      const curtainHeight = Math.max(1, Math.round((wave * 0.5 + 0.5) * 2.5))
+      const colorIdx = hash(x * 7 + 44444) % auroraColors.length
+      const col = auroraColors[colorIdx]!
+      for (let y = 0; y < curtainHeight && y < SKY_ROWS - 1; y++) {
+        buffer[y]![x] = { char: y === curtainHeight - 1 ? "█" : "░", color: y === curtainHeight - 1 ? col : lerpColor(col, getSkyColor(y, "night", 0), 0.65) }
+      }
     }
   }
 
@@ -473,6 +490,15 @@ export function renderFrame(
     if (boltX + 1 < width) buffer[0]![boltX + 1] = { char: "·", color: "#ffffcc" }
   }
 
+  // 7b. Rabbit — fast dawn sprinter along undergrowth row
+  for (const rabbit of options.rabbits ?? []) {
+    const ry = groundStart - 1
+    if (rabbit.x >= 1 && rabbit.x < width) {
+      buffer[ry]![rabbit.x] = { char: ">", color: "#b8aa90" }
+      buffer[ry]![rabbit.x - 1] = { char: "·", color: "#a09880" }
+    }
+  }
+
   // 7c. Deer — grazes at undergrowth level at dawn/dusk
   if (options.deer) {
     const dy = groundStart - 1
@@ -518,6 +544,20 @@ export function renderFrame(
       { char: "·", color: "#6a5030" },
     ] as const
     if (variant < 4) buffer[undergrowthY]![x] = parts[variant]!
+  }
+
+  // Fairy ring — permanent mushroom circle, unlocked after 3+ rain events
+  if (options.fairyRingX !== undefined) {
+    const rx = options.fairyRingX
+    const ry = groundStart - 1
+    const ring = [-3, -1, 1, 3] as const
+    for (const dx of ring) {
+      const fx = rx + dx
+      if (fx >= 0 && fx < width) {
+        buffer[ry]![fx] = { char: "♦", color: dx % 2 === 0 ? "#8a3a2a" : "#c45020" }
+      }
+    }
+    if (rx >= 0 && rx < width) buffer[groundStart]![rx] = { char: "○", color: "#4a6030" }
   }
 
   // Post-rain: puddles on ground + mushrooms in undergrowth

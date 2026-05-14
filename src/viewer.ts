@@ -41,14 +41,22 @@ interface Deer {
   speed: number
 }
 
+interface Rabbit {
+  x: number
+  speed: number
+}
+
 let birds: Bird[] = []
 let foxes: Fox[] = []
+let rabbits: Rabbit[] = []
 let shootingStarTrail: { x: number; y: number }[] = []
 let deer: Deer | null = null
 let activeMilestoneText: string | undefined = undefined
 let isRaining = false
 let rainUntil = 0
 let postRainUntil = 0
+let rainEventCount = 0
+let fairyRingX: number | null = null
 let windStrength: 0 | 1 | 2 = 0
 let isLightning = false
 
@@ -58,8 +66,10 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     twinkleSeed,
     birds,
     foxes,
+    rabbits,
     shootingStarTrail,
     deer: deer ?? undefined,
+    fairyRingX: fairyRingX ?? undefined,
     milestoneText,
     isRaining,
     windStrength,
@@ -167,18 +177,25 @@ export async function viewer(): Promise<void> {
     const now = Date.now()
     if (isRaining && now > rainUntil) {
       isRaining = false
-      postRainUntil = now + 5 * 60 * 1000  // 5 min post-rain window
+      postRainUntil = now + 5 * 60 * 1000
     } else if (!isRaining && Math.random() < 0.20) {
       isRaining = true
       rainUntil = now + (3 + Math.random() * 7) * 60 * 1000
+      rainEventCount += 1
+      if (rainEventCount >= 3 && fairyRingX === null) {
+        const width = process.stdout.columns || 80
+        fairyRingX = Math.floor(width * 0.3 + Math.random() * width * 0.4)
+      }
     }
   }, 90 * 1000)
 
-  // Fox movement: slower than birds, runs along ground
+  // Fox + rabbit movement
   setInterval(() => {
     const width = process.stdout.columns || 80
     foxes = foxes.filter((f) => f.x <= width + 2)
     foxes.forEach((f) => { f.x += f.speed })
+    rabbits = rabbits.filter((r) => r.x <= width + 2)
+    rabbits.forEach((r) => { r.x += r.speed })
   }, 400)
 
   // Deer: crepuscular — spawns at dawn (5–8h) or dusk (17–21h), grazes then slowly walks off
@@ -198,6 +215,17 @@ export async function viewer(): Promise<void> {
     deer.x += deer.speed
     if (deer.x > width + 3) deer = null
   }, 2000)
+
+  // Rabbit spawn: dawn only (5–8h), every 4–10 min, faster than fox
+  function scheduleRabbitSpawn(): void {
+    const delay = (4 + Math.random() * 6) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      if (h >= 5 && h < 8) rabbits.push({ x: -2, speed: 2 + Math.floor(Math.random() * 2) })
+      scheduleRabbitSpawn()
+    }, delay)
+  }
+  scheduleRabbitSpawn()
 
   // Fox spawn: every 8–20 minutes, a single fox trots through
   function scheduleFoxSpawn(): void {

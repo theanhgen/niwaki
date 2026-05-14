@@ -124,7 +124,7 @@ Trees are never deleted. The forest only grows.
 
 ## Tree Species
 
-Five species are randomly assigned when a tree is planted:
+Fourteen species are randomly assigned when a tree is planted — a few highlights:
 
 | Species | Look |
 |---------|------|
@@ -179,7 +179,7 @@ Here's what each part means:
 
 ## Links
 
-- **npm**: [npmjs.com/package/niwaki](https://www.npmjs.com/package/niwaki)
+- **bun**: [npmjs.com/package/niwaki](https://www.npmjs.com/package/niwaki)
 - **GitHub**: [github.com/theanhgen/niwaki](https://github.com/theanhgen/niwaki)
 - **Issues**: [github.com/theanhgen/niwaki/issues](https://github.com/theanhgen/niwaki/issues)
 

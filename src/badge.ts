@@ -86,6 +86,6 @@ export async function badge(): Promise<void> {
   console.log("Add this to your README to show your niwaki forest.")
   console.log("")
   console.log(
-    `[![niwaki](./niwaki-badge.svg)](https://github.com/Varun2009178/honeytree)`,
+    `[![niwaki](./niwaki-badge.svg)](https://github.com/theanhgen/niwaki)`,
   )
 }

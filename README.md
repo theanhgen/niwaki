@@ -1,7 +1,7 @@
 # Niwaki
 
 [![npm version](https://img.shields.io/npm/v/niwaki.svg)](https://www.npmjs.com/package/niwaki)
-[![license](https://img.shields.io/npm/l/niwaki.svg)](https://github.com/Varun2009178/honeytree/blob/main/LICENSE)
+[![license](https://img.shields.io/npm/l/niwaki.svg)](https://github.com/theanhgen/niwaki/blob/main/LICENSE)
 
 Grow a pixel-art forest in your terminal every time you use Claude Code.
 
@@ -12,7 +12,7 @@ Each prompt plants a new tree. Each tree grows over time. Your forest evolves fr
 ## Quick Start
 
 ```bash
-npm install -g niwaki
+bun add -g niwaki
 niwaki init
 niwaki
 ```
@@ -61,7 +61,7 @@ Plant a tree to bring it all back to life.
 
 ## Badge
 
-Generate a badge for your GitHub README that shows your forest stats and links back to [Niwaki](https://github.com/Varun2009178/honeytree):
+Generate a badge for your GitHub README that shows your forest stats and links back to [Niwaki](https://github.com/theanhgen/niwaki):
 
 ```bash
 niwaki badge
@@ -70,10 +70,10 @@ niwaki badge
 This creates a `niwaki-badge.svg` file in your current directory and prints the markdown to embed it:
 
 ```markdown
-[![niwaki](./niwaki-badge.svg)](https://github.com/Varun2009178/honeytree)
+[![niwaki](./niwaki-badge.svg)](https://github.com/theanhgen/niwaki)
 ```
 
-The badge displays your tree count and streak status. It links to the [Niwaki repo](https://github.com/Varun2009178/honeytree) so anyone who sees it can install it themselves.
+The badge displays your tree count and streak status. It links to the [Niwaki repo](https://github.com/theanhgen/niwaki) so anyone who sees it can install it themselves.
 
 | State | Badge color | Example |
 |-------|-------------|---------|
@@ -95,7 +95,7 @@ niwaki md
 
 This creates a `FOREST.md` in your current directory with:
 
-- Your Niwaki badge (links to the [Niwaki repo](https://github.com/Varun2009178/honeytree))
+- Your Niwaki badge (links to the [Niwaki repo](https://github.com/theanhgen/niwaki))
 - Stats: tree count, streak, biome
 - A plain-text rendering of your forest (tree silhouettes, stars, ground)
 - Total prompts and forest age
@@ -128,11 +128,11 @@ Five species are randomly assigned when a tree is planted:
 
 | Species | Look |
 |---------|------|
-| Oak | Wide, rounded canopy |
 | Pine | Tall, triangular shape |
 | Birch | Light trunk, bright leaves |
 | Willow | Drooping canopy |
-| Cherry | Pink blossoms |
+| Maple | Autumn red and orange canopy |
+| Baobab | Massive trunk, sparse crown |
 
 Each species has 4 growth stages (seed, sapling, young, full). Existing trees grow a little with each new prompt.
 
@@ -177,16 +177,11 @@ Here's what each part means:
 
 ---
 
-## Requirements
-
-- Node.js 18+
-- [Claude Code](https://claude.com/claude-code) (for the automatic hook)
-
 ## Links
 
 - **npm**: [npmjs.com/package/niwaki](https://www.npmjs.com/package/niwaki)
-- **GitHub**: [github.com/Varun2009178/honeytree](https://github.com/Varun2009178/honeytree)
-- **Issues**: [github.com/Varun2009178/honeytree/issues](https://github.com/Varun2009178/honeytree/issues)
+- **GitHub**: [github.com/theanhgen/niwaki](https://github.com/theanhgen/niwaki)
+- **Issues**: [github.com/theanhgen/niwaki/issues](https://github.com/theanhgen/niwaki/issues)
 
 ## License
 

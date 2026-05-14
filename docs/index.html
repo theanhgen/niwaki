@@ -237,159 +237,203 @@
 
 <script>
 (function () {
-  // Forest renderer
-  var W = 92, H = 12;
-  var G = [];
-  for (var r = 0; r < H; r++) {
-    G.push([]);
-    for (var c = 0; c < W; c++) G[r].push([' ', null]);
+  var wrap = document.querySelector('.forest-wrap');
+  if (!wrap) return;
+
+  // Sprite template parser — matches original React component exactly
+  function parseSprite(template, palette) {
+    var lines = template.trim().split('\n');
+    var width = 0;
+    for (var i = 0; i < lines.length; i++) if (lines[i].length > width) width = lines[i].length;
+    var rows = lines.map(function (line) {
+      while (line.length < width) line += ' ';
+      return line.split('').map(function (ch) {
+        var col = palette[ch] || null;
+        return col ? ['█', col] : [' ', null];
+      });
+    });
+    rows.reverse();
+    return { rows: rows, width: width };
   }
 
-  function set(r, c, ch, col) {
-    if (r >= 0 && r < H && c >= 0 && c < W) G[r][c] = [ch, col];
+  // Palette colors
+  var OL='#5b9a4a', OD='#3f7132', OT='#8e6238';
+  var PL='#2d5b29',              PT='#6f4c2f';
+  var BL='#7cc96a', BLL='#a4e28d', BT='#d9d6d2';
+  var WL='#7cc96a',              WT='#8e6238';
+  var CL='#de93b8', CLL='#f0b7cf', CT='#b18552';
+
+  // Sprite definitions matching original exactly
+  var X = {
+    oak: {
+      seed:    parseSprite(' g\n t',                                                        {g:OL,t:OT}),
+      sapling: parseSprite(' gg\nggg\n t',                                                  {g:OL,t:OT}),
+      young:   parseSprite('  gg\n gGGg\nggGGgg\n  tt\n  tt',                              {g:OL,G:OD,t:OT}),
+      full:    parseSprite('   gg\n gGGGG\nggGGGGgg\n gGGGGg\n   tt\n   tt',              {g:OL,G:OD,t:OT})
+    },
+    pine: {
+      seed:    parseSprite(' g\n t',                                                        {g:PL,t:PT}),
+      sapling: parseSprite('  g\n gg\nggg\n t',                                            {g:PL,t:PT}),
+      young:   parseSprite('   g\n  ggg\n gGGGg\nggGGGG\n   t\n   t',                    {g:PL,G:OD,t:PT}),
+      full:    parseSprite('    g\n   ggg\n  gGGGg\n gGGGGGg\nggGGGGGG\n gGGGGG\n    t\n    t', {g:PL,G:OD,t:PT})
+    },
+    birch: {
+      seed:    parseSprite(' g\n b',                                                        {g:BL,b:BT}),
+      sapling: parseSprite(' gg\nghg\n b',                                                  {g:BL,h:BLL,b:BT}),
+      young:   parseSprite('  hg\n hggg\nggghhg\n  bb\n  bb',                              {g:BL,h:BLL,b:BT}),
+      full:    parseSprite('   hh\n hgggh\nggghhgg\n hgggh\n   bb\n   bb',                {g:BL,h:BLL,b:BT})
+    },
+    willow: {
+      seed:    parseSprite(' g\n t',                                                        {g:WL,t:WT}),
+      sapling: parseSprite(' ggg\nggggg\n ttt',                                            {g:WL,t:WT}),
+      young:   parseSprite('  gggg\n gggggg\ngg ggg gg\ngg     gg\n   tt\n   tt',         {g:WL,t:WT}),
+      full:    parseSprite('   ggggg\n gggggggg\ngg ggggg gg\ngg  ggg  gg\ngg       gg\n    tt\n    tt', {g:WL,t:WT})
+    },
+    cherry: {
+      seed:    parseSprite(' p\n t',                                                        {p:CL,t:CT}),
+      sapling: parseSprite(' pp\npPp\n t',                                                  {p:CLL,P:CL,t:CT}),
+      young:   parseSprite('  pP\n pPPp\npPPpPP\n  tt\n  tt',                             {p:CLL,P:CL,t:CT}),
+      full:    parseSprite('   pPp\n pPPPPp\npPPpPPPp\n pPPPpp\n   tt\n   tt',            {p:CLL,P:CL,t:CT})
+    }
+  };
+
+  function getSprite(type, growth) {
+    var sp = X[type] || X.oak;
+    return growth < 0.2 ? sp.seed : growth < 0.5 ? sp.sapling : growth < 0.8 ? sp.young : sp.full;
   }
 
-  function str(r, c, s, col) {
-    for (var i = 0; i < s.length; i++) set(r, c + i, s[i], col);
+  // Grove biome (matches original — 13 trees = grove range)
+  var BIOME = {
+    ground:  ['#22492d', '#18361f'],
+    density: 9,
+    glyphs:  ['\xb7', '\xb7', '✦', '.'],
+    colors:  ['#444444', '#5d5d5d']
+  };
+
+  // Hash function — matches original murmur finalizer exactly
+  function hash(e) {
+    var s = (e >>> 0);
+    s = (Math.imul(s ^ (s >>> 16), 0x45d9f3b) >>> 0);
+    s = (Math.imul(s ^ (s >>> 16), 0x45d9f3b) >>> 0);
+    return (s ^ (s >>> 16)) >>> 0;
   }
 
-  // Stars
-  var STARS = [
-    [0, 5, '\xb7', '#5d5d5d'], [0, 30, '.', '#4d4d4d'], [0, 55, '\xb7', '#6a6a55'], [0, 75, '\xb7', '#5d5d5d'],
-    [1, 18, '✧', '#4d4d4d'], [1, 47, '.', '#5d5d5d'], [1, 67, '\xb7', '#6a6a55'],
-    [2, 38, '\xb7', '#5d5d5d'], [2, 88, '.', '#4d4d4d']
+  // Demo trees — exact data from original React component
+  var TREES = [
+    {type:'cherry', growth:.9,  fx:.05},
+    {type:'oak',    growth:1,   fx:.12},
+    {type:'cherry', growth:.65, fx:.195},
+    {type:'oak',    growth:1,   fx:.275},
+    {type:'pine',   growth:.95, fx:.355},
+    {type:'cherry', growth:.45, fx:.415},
+    {type:'birch',  growth:1,   fx:.475},
+    {type:'oak',    growth:.85, fx:.545},
+    {type:'cherry', growth:.55, fx:.61},
+    {type:'willow', growth:1,   fx:.67},
+    {type:'pine',   growth:1,   fx:.75},
+    {type:'birch',  growth:.75, fx:.82},
+    {type:'oak',    growth:1,   fx:.89},
+    {type:'cherry', growth:.4,  fx:.955}
   ];
-  for (var i = 0; i < STARS.length; i++) {
-    set(STARS[i][0], STARS[i][1], STARS[i][2], STARS[i][3]);
+
+  var H = 13;
+  var W = Math.max(40, Math.floor((wrap.offsetWidth || 760) / 7.813));
+  var treeCount = 0;
+  var tick = 0;
+
+  function makeGrid() {
+    var g = [];
+    for (var r = 0; r < H; r++) {
+      g.push([]);
+      for (var c = 0; c < W; c++) g[r].push({ch: ' ', col: null});
+    }
+    return g;
   }
 
-  // Sprite definitions: array of {dr, ops:[dc, text, color]}
-  // dr = row offset from startRow
-  var OL = '#5b9a4a', OD = '#3f7132', OT = '#8e6238';
-  var OAK = [
-    {dr:0, ops:[[3,'██',OL]]},
-    {dr:1, ops:[[4,'█',OL],[5,'████',OD]]},
-    {dr:2, ops:[[3,'██',OL],[5,'████',OD],[9,'██',OL]]},
-    {dr:3, ops:[[4,'█',OL],[5,'████',OD],[9,'█',OL]]},
-    {dr:4, ops:[[6,'██',OT]]},
-    {dr:5, ops:[[6,'██',OT]]}
-  ];
-
-  var PL = '#2d5b29', PD = '#3f7132', PT = '#6f4c2f';
-  var PINE = [
-    {dr:0, ops:[[2,'█',PL]]},
-    {dr:1, ops:[[5,'███',PL]]},
-    {dr:2, ops:[[4,'█',PL],[5,'███',PD],[8,'█',PL]]},
-    {dr:3, ops:[[3,'█',PL],[4,'█████',PD],[9,'█',PL]]},
-    {dr:4, ops:[[2,'██',PL],[4,'██████',PD]]},
-    {dr:5, ops:[[3,'█',PL],[4,'█████',PD]]},
-    {dr:6, ops:[[6,'█',PT]]},
-    {dr:7, ops:[[6,'█',PT]]}
-  ];
-
-  var BLL = '#a4e28d', BL = '#7cc96a', BT = '#d9d6d2';
-  var BIRCH = [
-    {dr:0, ops:[[3,'██',BLL]]},
-    {dr:1, ops:[[4,'█',BLL],[5,'███',BL],[8,'█',BLL]]},
-    {dr:2, ops:[[3,'███',BL],[6,'██',BLL],[8,'██',BL]]},
-    {dr:3, ops:[[4,'█',BLL],[5,'███',BL],[8,'█',BLL]]},
-    {dr:4, ops:[[6,'██',BT]]},
-    {dr:5, ops:[[6,'██',BT]]}
-  ];
-
-  var WL = '#7cc96a', WT = '#8e6238';
-  var WILLOW = [
-    {dr:0, ops:[[2,'█████',WL]]},
-    {dr:1, ops:[[3,'████████',WL]]},
-    {dr:2, ops:[[2,'██',WL],[5,'█████',WL],[11,'██',WL]]},
-    {dr:3, ops:[[2,'██',WL],[6,'███',WL],[11,'██',WL]]},
-    {dr:4, ops:[[2,'██',WL],[11,'██',WL]]},
-    {dr:5, ops:[[6,'██',WT]]},
-    {dr:6, ops:[[6,'██',WT]]}
-  ];
-
-  var CLL = '#f0b7cf', CL = '#de93b8', CT = '#b18552';
-  var CHERRY = [
-    {dr:0, ops:[[2,'█',CLL],[3,'█',CL],[4,'█',CLL]]},
-    {dr:1, ops:[[3,'█',CLL],[4,'████',CL],[8,'█',CLL]]},
-    {dr:2, ops:[[2,'█',CLL],[3,'██',CL],[5,'█',CLL],[6,'███',CL],[9,'█',CLL]]},
-    {dr:3, ops:[[3,'█',CLL],[4,'███',CL],[7,'██',CLL]]},
-    {dr:4, ops:[[5,'██',CT]]},
-    {dr:5, ops:[[5,'██',CT]]}
-  ];
-
-  function placeTree(sprite, ox, startRow) {
-    for (var ri = 0; ri < sprite.length; ri++) {
-      var row = sprite[ri];
-      var sceneRow = startRow + row.dr;
-      for (var oi = 0; oi < row.ops.length; oi++) {
-        var op = row.ops[oi];
-        str(sceneRow, ox + op[0], op[1], op[2]);
+  function drawBackground(g) {
+    for (var n = 0; n < W; n++) {
+      var l = hash(n + 17 * W + 101 * tick);
+      if (l % BIOME.density === 0) {
+        var row = l % 4;
+        if (row < H) g[row][n] = {ch: BIOME.glyphs[l % BIOME.glyphs.length], col: BIOME.colors[l % BIOME.colors.length]};
       }
     }
   }
 
-  // Trunk base (lower trunk) at scene row 9
-  // Pine (8 rows): startRow = 9 - 7 = 2
-  // Oak/Birch/Cherry (6 rows): startRow = 9 - 5 = 4
-  // Willow (7 rows): startRow = 9 - 6 = 3
-
-  placeTree(PINE,   1,  2);
-  placeTree(OAK,   13,  4);
-  placeTree(CHERRY,28,  4);
-  placeTree(BIRCH, 41,  4);
-  placeTree(WILLOW,55,  3);
-  placeTree(OAK,   72,  4);
-  placeTree(PINE,  84,  2);
-
-  // Ground rows
-  var GD = '#163a1e', GG = '#1e4a28';
-  for (var c = 0; c < W; c++) {
-    set(10, c, '█', GD);
-    set(11, c, '█', GG);
+  function drawGround(g) {
+    for (var t = 0; t < 2; t++)
+      for (var n = 0; n < W; n++)
+        g[11 + t][n] = {ch: '█', col: BIOME.ground[t]};
   }
 
-  // Render to HTML
+  function placeTree(g, sprite, cx) {
+    var l = cx - Math.floor(sprite.width / 2);
+    for (var ri = 0; ri < sprite.rows.length; ri++) {
+      var r = 10 - ri;
+      if (r < 0 || r >= H) continue;
+      for (var ci = 0; ci < sprite.rows[ri].length; ci++) {
+        var c = l + ci;
+        if (c < 0 || c >= W) continue;
+        var cell = sprite.rows[ri][ci];
+        if (cell[1]) g[r][c] = {ch: cell[0], col: cell[1]};
+      }
+    }
+  }
+
   function esc(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  var html = '';
-  for (var r = 0; r < H; r++) {
-    var line = '';
-    var ci = 0;
-    while (ci < G[r].length) {
-      var cell = G[r][ci];
-      var ch = cell[0], col = cell[1];
-      var j = ci + 1;
-      while (j < G[r].length && G[r][j][1] === col) j++;
-      var text = '';
-      for (var k = ci; k < j; k++) text += G[r][k][0];
-      if (col) {
-        line += '<span style="color:' + col + '">' + esc(text) + '</span>';
-      } else {
-        line += esc(text);
+  function gridToHTML(g) {
+    return g.map(function (row) {
+      var line = '', i = 0;
+      while (i < row.length) {
+        var col = row[i].col, text = '', j = i;
+        while (j < row.length && row[j].col === col) { text += row[j].ch; j++; }
+        line += col ? '<span style="color:' + col + '">' + esc(text) + '</span>' : esc(text);
+        i = j;
       }
-      ci = j;
-    }
-    html += '<div>' + line + '</div>';
+      return '<div>' + line + '</div>';
+    }).join('');
   }
 
   var pre = document.createElement('pre');
-  pre.style.cssText = 'font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:1.3;margin:0;padding:6px 20px 4px;background:transparent;overflow:hidden';
-  pre.innerHTML = html;
-  var wrap = document.querySelector('.forest-wrap');
-  if (wrap) wrap.appendChild(pre);
+  pre.style.cssText = 'font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.28;margin:0;padding:0;background:transparent;overflow:hidden';
+  wrap.appendChild(pre);
+
+  function render() {
+    var g = makeGrid();
+    drawBackground(g);
+    for (var i = 0; i < treeCount; i++) {
+      var tree = TREES[i];
+      var x = Math.max(4, Math.min(W - 4, Math.round(tree.fx * (W - 1))));
+      placeTree(g, getSprite(tree.type, tree.growth), x);
+    }
+    drawGround(g);
+    pre.innerHTML = gridToHTML(g);
+  }
+
+  function addNextTree() {
+    if (treeCount >= TREES.length) return;
+    treeCount++;
+    render();
+    setTimeout(addNextTree, 320);
+  }
+
+  setInterval(function () { tick = (tick + 1) % 999; render(); }, 1800);
+
+  render();
+  setTimeout(addNextTree, 600);
 
   // Copy buttons
-  document.querySelectorAll('.cmd-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
+  document.querySelectorAll('.cmd-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
       var code = btn.previousElementSibling.textContent;
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(code).then(function() {
+        navigator.clipboard.writeText(code).then(function () {
           var orig = btn.textContent;
           btn.textContent = 'Copied!';
-          setTimeout(function() { btn.textContent = orig; }, 1500);
+          setTimeout(function () { btn.textContent = orig; }, 1500);
         });
       }
     });

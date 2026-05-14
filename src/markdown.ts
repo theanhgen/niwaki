@@ -43,7 +43,7 @@ function buildMarkdown(forest: Forest): string {
   const lines = [
     `<div align="center">`,
     ``,
-    `[![niwaki](./niwaki-badge.svg)](https://github.com/Varun2009178/honeytree)`,
+    `[![niwaki](./niwaki-badge.svg)](https://github.com/theanhgen/niwaki)`,
     ``,
     statParts.join(" · "),
     ``,
@@ -53,7 +53,7 @@ function buildMarkdown(forest: Forest): string {
     ``,
     `${forest.totalPrompts} prompts over ${days} day${days === 1 ? "" : "s"}`,
     ``,
-    `<sub>Grown with <a href="https://github.com/Varun2009178/honeytree">niwaki</a> — a forest that grows in your terminal every time you use Claude Code</sub>`,
+    `<sub>Grown with <a href="https://github.com/theanhgen/niwaki">niwaki</a> — a forest that grows in your terminal every time you use AI agents</sub>`,
     ``,
     `</div>`,
     ``,

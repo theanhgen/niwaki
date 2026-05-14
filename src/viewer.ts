@@ -35,6 +35,8 @@ let birds: Bird[] = []
 let activeMilestoneText: string | undefined = undefined
 let isRaining = false
 let rainUntil = 0
+let postRainUntil = 0
+let windStrength: 0 | 1 | 2 = 0
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -43,6 +45,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     birds,
     milestoneText,
     isRaining,
+    windStrength,
+    postRain: Date.now() < postRainUntil,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -101,11 +105,11 @@ export async function viewer(): Promise<void> {
   let lastTotalPrompts = forest.totalPrompts
   let animating = false
 
-  // Bird movement: advance each bird every 250ms, re-render if not animating
+  // Bird movement: advance each bird every 250ms (wind speeds them up), re-render if not animating
   setInterval(() => {
     const width = process.stdout.columns || 80
     birds = birds.filter((b) => b.x <= width)
-    birds.forEach((b) => { b.x += b.speed })
+    birds.forEach((b) => { b.x += b.speed + windStrength })
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
 
@@ -131,11 +135,23 @@ export async function viewer(): Promise<void> {
     const now = Date.now()
     if (isRaining && now > rainUntil) {
       isRaining = false
+      postRainUntil = now + 5 * 60 * 1000  // 5 min post-rain window
     } else if (!isRaining && Math.random() < 0.20) {
       isRaining = true
       rainUntil = now + (3 + Math.random() * 7) * 60 * 1000
     }
   }, 90 * 1000)
+
+  // Wind tick: shift strength every 5–15 minutes
+  function scheduleWindChange(): void {
+    const delay = (5 + Math.random() * 10) * 60 * 1000
+    setTimeout(() => {
+      const roll = Math.random()
+      windStrength = roll < 0.5 ? 0 : roll < 0.85 ? 1 : 2
+      scheduleWindChange()
+    }, delay)
+  }
+  scheduleWindChange()
 
   const cleanup = (): void => {
     showCursor()

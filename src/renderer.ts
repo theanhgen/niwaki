@@ -333,7 +333,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; milestoneText?: string; isRaining?: boolean } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -430,14 +430,28 @@ export function renderFrame(
       { char: "·", color: "#6a5030" },
     ] as const
     if (variant < 4) buffer[undergrowthY]![x] = parts[variant]!
-    // variant 4-5 = empty gap (keeps it natural)
   }
 
-  // Autumn fallen leaves scattered in lower tree zone
-  if (season === "autumn") {
+  // Post-rain: puddles on ground + mushrooms in undergrowth
+  if (options.postRain) {
     for (let x = 0; x < width; x++) {
-      const h = hash(x * 83 + 4444)
-      if (h % 9 !== 0) continue
+      const h = hash(x * 59 + 8888)
+      if (h % 7 === 0) {
+        buffer[groundStart]![x] = { char: "~", color: "#3a6a8a" }
+      }
+      if (h % 11 === 0 && buffer[undergrowthY]![x]?.color === null) {
+        const mushroomColors = ["#8a3a2a", "#c4521a", "#e8782a"] as const
+        buffer[undergrowthY]![x] = { char: "♦", color: mushroomColors[h % 3]! }
+      }
+    }
+  }
+
+  // Autumn fallen leaves — more dense in wind
+  if (season === "autumn") {
+    const leafDensity = options.windStrength === 2 ? 5 : options.windStrength === 1 ? 7 : 9
+    for (let x = 0; x < width; x++) {
+      const h = hash(x * 83 + (options.twinkleSeed ?? 0) * 41 + 4444)
+      if (h % leafDensity !== 0) continue
       const ly = SKY_ROWS + TREE_ROWS - 2 + (h % 2)
       if (buffer[ly]![x]?.color !== null) continue
       const leafColors = ["#c4701a", "#e8a020", "#d45010"] as const
@@ -461,9 +475,10 @@ export function renderFrame(
     }
   }
 
-  // 8c. Rain drops
+  // 8c. Rain drops — angled by wind strength
   if (options.isRaining) {
     const seed = options.twinkleSeed ?? 0
+    const wind = options.windStrength ?? 0
     const dropCount = Math.floor(width * 0.18)
     for (let i = 0; i < dropCount; i++) {
       const h = hash(i * 37 + seed * 113 + 5555)
@@ -472,11 +487,26 @@ export function renderFrame(
       const cell = buffer[y]![x]
       if (!cell) continue
       if (y >= SKY_ROWS && cell.color !== null && hash(h + 9) % 3 !== 0) continue
-      buffer[y]![x] = { char: "|", color: "#4a7a9a" }
+      const dropChar = wind === 2 ? "/" : wind === 1 && h % 2 === 0 ? "/" : "|"
+      buffer[y]![x] = { char: dropChar, color: "#4a7a9a" }
     }
   }
 
-  // 8d. Fog
+  // 8d. Dawn mist — blue-grey overlay at dawn, distinct from wilt
+  if (period === "dawn" && blend < 0.7) {
+    const mistDensity = Math.max(4, Math.round(12 * blend + 4))
+    const mistStart = SKY_ROWS + Math.floor(TREE_ROWS * 0.4)
+    for (let y = mistStart; y < groundStart + GROUND_ROWS; y++) {
+      for (let x = 0; x < width; x++) {
+        const h = hash(x * 29 + y * 67 + 77777)
+        if (h % mistDensity !== 0) continue
+        const mistChar = h % 3 === 0 ? "▒" : "░"
+        buffer[y]![x] = { char: mistChar, color: "#7a8fa8" }
+      }
+    }
+  }
+
+  // 8e. Fog (wilt)
   applyFog(buffer, effectiveWilt, width)
 
   // 9. Output loop with season + wilt color composition

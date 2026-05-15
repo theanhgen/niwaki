@@ -110,6 +110,8 @@ let beetle: { x: number; speed: number } | null = null
 let puddles: { x: number; until: number }[] = []
 let groundFog = false
 let moth: { x: number; y: number; color: string; dx: number; dy: number } | null = null
+let migration: { xf: number; y: number; size: number; speed: number } | null = null
+let raccoon: { x: number; speed: number; washing: boolean; washTimer: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -168,6 +170,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     puddles: puddles.length > 0 ? puddles.map(p => p.x) : undefined,
     groundFog: groundFog || undefined,
     moth: moth ? { x: Math.floor(moth.x), y: Math.floor(moth.y), color: moth.color } : undefined,
+    migration: migration ? { x: Math.floor(migration.xf), y: migration.y, size: migration.size } : undefined,
+    raccoon: raccoon ? { x: raccoon.x, washing: raccoon.washing } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -358,6 +362,11 @@ export async function viewer(): Promise<void> {
       const bounds = getStreamBounds(forest!, width)
       if (!bounds || otter.x > bounds.x + bounds.w + 4) otter = null
     }
+    // Migration — V-formation moves steadily right across sky
+    if (migration) {
+      migration.xf += migration.speed
+      if (migration.xf > width + migration.size * 2 + 20) migration = null
+    }
     // Moth — erratic dusk-to-dawn drifter through canopy rows
     if (moth) {
       moth.x += moth.dx + (Math.random() - 0.5) * 0.8
@@ -544,6 +553,18 @@ export async function viewer(): Promise<void> {
       } else if (!kingfisher.diving && Math.random() < 0.05) {
         kingfisher.diving = true
         kingfisher.diveTimer = 2 + Math.floor(Math.random() * 4)
+      }
+    }
+    // Raccoon — shuffles toward stream, pauses to "wash" food
+    if (raccoon) {
+      const w = process.stdout.columns || 80
+      if (raccoon.x > w + 4) { raccoon = null }
+      else if (raccoon.washing) {
+        raccoon.washTimer--
+        if (raccoon.washTimer <= 0) raccoon.washing = false
+      } else {
+        raccoon.x += raccoon.speed
+        if (Math.random() < 0.06) { raccoon.washing = true; raccoon.washTimer = 4 + Math.floor(Math.random() * 8) }
       }
     }
   }, 400)
@@ -1142,6 +1163,39 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleMothSpawn()
+
+  // Bird migration — spring (Mar-May) and autumn (Aug-Oct), once per hour if right season
+  setInterval(() => {
+    if (migration) return
+    const h = new Date().getHours()
+    const m = new Date().getMonth()
+    const isMigrationSeason = (m >= 2 && m <= 4) || (m >= 7 && m <= 9)
+    const isGoodTime = h >= 6 && h < 20
+    if (isMigrationSeason && isGoodTime && Math.random() < 0.35 && (forest?.trees.length ?? 0) >= 3) {
+      const width = process.stdout.columns || 80
+      migration = {
+        xf: -20,
+        y: 1 + Math.floor(Math.random() * 3),
+        size: 3 + Math.floor(Math.random() * 4),
+        speed: 0.5 + Math.random() * 0.3,
+      }
+    }
+  }, 60 * 60 * 1000)
+
+  // Raccoon — nocturnal, near stream, every 25-50 min
+  function scheduleRaccoonSpawn(): void {
+    const delay = (25 + Math.random() * 25) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isNight = h >= 20 || h < 5
+      if (isNight && !raccoon && (forest?.trees.length ?? 0) >= 10) {
+        raccoon = { x: -2, speed: 1, washing: false, washTimer: 0 }
+        setTimeout(() => { raccoon = null }, (12 + Math.random() * 15) * 60 * 1000)
+      }
+      scheduleRaccoonSpawn()
+    }, delay)
+  }
+  scheduleRaccoonSpawn()
 
   // Ground fog: cool mornings in spring/autumn, check every 5 min
   setInterval(() => {

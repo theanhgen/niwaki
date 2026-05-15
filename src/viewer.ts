@@ -118,6 +118,7 @@ let mayflyHatch: { until: number } | null = null
 let vole: { x: number; speed: number } | null = null
 let kestrel: { x: number; y: number; hoverTimer: number; until: number } | null = null
 let hedgehog: { x: number; speed: number; rolled: boolean; rollTimer: number } | null = null
+let salamander: { x: number; speed: number; tickCount: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -184,6 +185,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     vole: vole ? { x: vole.x } : undefined,
     kestrel: kestrel ? { x: kestrel.x, y: kestrel.y } : undefined,
     hedgehog: hedgehog ? { x: hedgehog.x, rolled: hedgehog.rolled } : undefined,
+    salamander: salamander ? { x: salamander.x } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -479,6 +481,12 @@ export async function viewer(): Promise<void> {
         frog = { x: Math.floor(width * 0.3 + Math.random() * width * 0.4) }
         setTimeout(() => { frog = null }, (5 + Math.random() * 10) * 60 * 1000)
       }
+      // Salamander emerges after rain in spring/summer — slow orange ground mover
+      const sm = new Date().getMonth()
+      if (!salamander && (sm >= 2 && sm <= 7) && Math.random() < 0.45) {
+        salamander = { x: 2, speed: 1, tickCount: 0 }
+        setTimeout(() => { salamander = null }, (8 + Math.random() * 12) * 60 * 1000)
+      }
       // Snail emerges after rain — very slow, crosses ground over ~15 min
       if (!snail && Math.random() < 0.5) {
         snail = { xf: -2, tickCount: 0 }
@@ -626,6 +634,15 @@ export async function viewer(): Promise<void> {
         if (threatened && Math.random() < 0.4) { hedgehog.rolled = true; hedgehog.rollTimer = 8 + Math.floor(Math.random() * 10) }
         else hedgehog.x += hedgehog.speed
       }
+    }
+    // Salamander — slow, pauses frequently; exits right edge
+    if (salamander) {
+      salamander.tickCount++
+      if (salamander.tickCount >= 5) {
+        salamander.tickCount = 0
+        if (Math.random() < 0.7) salamander.x += salamander.speed
+      }
+      if (salamander.x > (process.stdout.columns || 80) + 3) salamander = null
     }
   }, 400)
 

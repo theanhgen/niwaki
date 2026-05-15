@@ -117,6 +117,7 @@ let murmuration: { x: number; y: number; dx: number; seed: number; until: number
 let mayflyHatch: { until: number } | null = null
 let vole: { x: number; speed: number } | null = null
 let kestrel: { x: number; y: number; hoverTimer: number; until: number } | null = null
+let hedgehog: { x: number; speed: number; rolled: boolean; rollTimer: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -182,6 +183,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     mayflyHatch: mayflyHatch ? true : undefined,
     vole: vole ? { x: vole.x } : undefined,
     kestrel: kestrel ? { x: kestrel.x, y: kestrel.y } : undefined,
+    hedgehog: hedgehog ? { x: hedgehog.x, rolled: hedgehog.rolled } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -610,6 +612,19 @@ export async function viewer(): Promise<void> {
       } else {
         raccoon.x += raccoon.speed
         if (Math.random() < 0.06) { raccoon.washing = true; raccoon.washTimer = 4 + Math.floor(Math.random() * 8) }
+      }
+    }
+    // Hedgehog — slow noctural shuffler; rolls when fox or raccoon nearby
+    if (hedgehog) {
+      const w = process.stdout.columns || 80
+      if (hedgehog.x > w + 3) { hedgehog = null }
+      else if (hedgehog.rolled) {
+        hedgehog.rollTimer--
+        if (hedgehog.rollTimer <= 0) hedgehog.rolled = false
+      } else {
+        const threatened = foxes.some(f => Math.abs(f.x - hedgehog!.x) < 8) || (raccoon !== null && Math.abs(raccoon.x - hedgehog.x) < 8)
+        if (threatened && Math.random() < 0.4) { hedgehog.rolled = true; hedgehog.rollTimer = 8 + Math.floor(Math.random() * 10) }
+        else hedgehog.x += hedgehog.speed
       }
     }
   }, 400)
@@ -1263,6 +1278,21 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleRaccoonSpawn()
+
+  // Hedgehog — nocturnal insectivore, spawns every 20-40 min at night
+  function scheduleHedgehogSpawn(): void {
+    const delay = (20 + Math.random() * 20) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isNight = h >= 20 || h < 5
+      if (isNight && !hedgehog && (forest?.trees.length ?? 0) >= 5) {
+        hedgehog = { x: -1, speed: 1, rolled: false, rollTimer: 0 }
+        setTimeout(() => { hedgehog = null }, (10 + Math.random() * 15) * 60 * 1000)
+      }
+      scheduleHedgehogSpawn()
+    }, delay)
+  }
+  scheduleHedgehogSpawn()
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

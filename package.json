@@ -1,6 +1,6 @@
 {
   "name": "niwaki",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Grow a forest in your terminal every time you use Claude Code",
   "type": "module",
   "bin": {
@@ -10,7 +10,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun build bin/niwaki.ts --outfile dist/bin/niwaki.js --target node --minify",
+    "build": "bun build bin/niwaki.ts --outfile dist/bin/niwaki.js --target node --minify-whitespace --minify-syntax",
     "dev": "bun run bin/niwaki.ts",
     "test": "bun test"
   },

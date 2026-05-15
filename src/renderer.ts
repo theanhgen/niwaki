@@ -1382,6 +1382,47 @@ export function renderFrame(
     }
   }
 
+  // Damselfly — slender spring/summer near stream; blue/violet, thinner than dragonfly
+  if ((season === "spring" || season === "summer") && period === "day" && forest.trees.length >= 10) {
+    const createdSeedDf = forest.createdAt.slice(0, 10).split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
+    const dfStreamX = Math.floor(width * 0.15 + hash(createdSeedDf * 13 + 77) % Math.floor(width * 0.65))
+    const dfStreamW = 14 + hash(dfStreamX * 7 + 88) % 8
+    const seed8 = options.twinkleSeed ?? 0
+    const dfX = dfStreamX + hash(seed8 * 17 + 55551) % dfStreamW
+    const dfY = groundStart - 2 + hash(seed8 * 11 + 44443) % 2
+    const dfColors = ["#4060e0", "#8030d0", "#40a0e0"]
+    if (dfX >= 0 && dfX < width && dfY >= SKY_ROWS && dfY < groundStart && !buffer[dfY]![dfX]?.color)
+      buffer[dfY]![dfX] = { char: "|", color: dfColors[hash(seed8 * 7 + 33337) % dfColors.length]! }
+  }
+
+  // Cuckoo call — spring, rising `♩` musical notes from hidden cuckoo in canopy
+  if (season === "spring" && period === "day" && forest.trees.length >= 5) {
+    const seed9 = options.twinkleSeed ?? 0
+    const cuckooPhase = seed9 % 120 // cuckoo calls every ~2 min at 250ms tick = every 480 ticks ≈ every 30s visible
+    if (cuckooPhase >= 0 && cuckooPhase < 4) {
+      const cxTree = forest.trees[hash(forest.trees.length * 7 + 11117) % forest.trees.length]!
+      const noteX = cxTree.x
+      const noteY = SKY_ROWS - 1 - (cuckooPhase % 3)
+      if (noteY >= 0 && noteX >= 0 && noteX < width && !buffer[noteY]![noteX]?.color)
+        buffer[noteY]![noteX] = { char: "♩", color: "#c8a030" }
+    }
+  }
+
+  // Ivy berries — small black berries on ivy-covered trees in winter
+  if (season === "winter" && forest.trees.length >= 10) {
+    for (const tree of forest.trees) {
+      if (tree.growth < 0.8 || tree.type === "stump") continue
+      if (hash(tree.id * 53 + 77771) % 4 !== 0) continue // same as ivy trees
+      const berryX = tree.x - 2
+      if (berryX < 0 || berryX >= width) continue
+      for (let y = groundStart - 3; y < groundStart - 1; y++) {
+        if (!buffer[y]![berryX]?.color) continue
+        if (hash(berryX * 31 + y * 17 + 44443) % 3 === 0)
+          buffer[y]![berryX] = { char: "·", color: "#181818" } // black ivy berry
+      }
+    }
+  }
+
   // 7b. Lightning bolt + sky flash during thunderstorm
   if (options.isLightning) {
     const boltX = hash((options.twinkleSeed ?? 0) * 53 + 22222) % width

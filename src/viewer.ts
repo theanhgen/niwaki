@@ -139,6 +139,7 @@ let redKite: { xf: number; y: number; speed: number; angle: number } | null = nu
 let waxwings: { xf: number; y: number; speed: number }[] = []
 let bullfinch: { x: number; speed: number } | null = null
 let peregrine: { x: number; yf: number; speed: number } | null = null
+let dipper: { x: number; bobTimer: number; bobbing: boolean } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -226,6 +227,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     waxwings: waxwings.length > 0 ? waxwings.map(w => ({ x: Math.floor(w.xf), y: w.y })) : undefined,
     bullfinch: bullfinch ? { x: bullfinch.x } : undefined,
     peregrine: peregrine ? { x: peregrine.x, y: Math.floor(peregrine.yf) } : undefined,
+    dipper: dipper ? { x: dipper.x, bobbing: dipper.bobbing } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -834,6 +836,14 @@ export async function viewer(): Promise<void> {
       if (pheasant.x > w + 4 || pheasant.x < -4 || pheasant.flushed) {
         if (pheasant.flushed) setTimeout(() => { pheasant = null }, 2000)
         else pheasant = null
+      }
+    }
+    // Dipper — bobs on stream rocks then dives; charming little stream bird
+    if (dipper) {
+      dipper.bobTimer--
+      if (dipper.bobTimer <= 0) {
+        dipper.bobbing = !dipper.bobbing
+        dipper.bobTimer = dipper.bobbing ? 2 + Math.floor(Math.random() * 3) : 5 + Math.floor(Math.random() * 8)
       }
     }
     // Hare — sits frozen in open ground, then bolts; sprint speed doubles near predators
@@ -1857,6 +1867,20 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   schedulePeregrineStoop()
+
+  // Dipper — bobs on stream rocks; resident year-round; spawn every 8-20 min
+  function scheduleDipperSpawn(): void {
+    const delay = (8 + Math.random() * 12) * 60 * 1000
+    setTimeout(() => {
+      const bounds = getStreamBounds(forest!, process.stdout.columns || 80)
+      if (!dipper && bounds && (forest?.trees.length ?? 0) >= 10) {
+        dipper = { x: bounds.x + Math.floor(bounds.w / 2), bobbing: false, bobTimer: 8 }
+        setTimeout(() => { dipper = null }, (3 + Math.random() * 5) * 60 * 1000)
+      }
+      scheduleDipperSpawn()
+    }, delay)
+  }
+  scheduleDipperSpawn()
 
   // Waxwings — irruptive Scandinavian visitors in berry years; Nov-Feb; every 2-4 hours
   setInterval(() => {

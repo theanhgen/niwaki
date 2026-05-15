@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[] } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[] } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -786,6 +786,19 @@ export function renderFrame(
     }
   }
 
+  // Crows — autumn/winter ground scavengers, walk and peck
+  if (options.crows) {
+    const crowY = groundStart - 1
+    for (const crow of options.crows) {
+      if (crow.x >= 1 && crow.x < width) {
+        buffer[crowY]![crow.x] = { char: crow.pecking ? "v" : ">", color: "#202820" }
+        if (!crow.pecking && crow.x - 1 >= 0 && !buffer[crowY]![crow.x - 1]?.color) {
+          buffer[crowY]![crow.x - 1] = { char: "-", color: "#2a3028" }
+        }
+      }
+    }
+  }
+
   // 7d. Winter frost — ice crystals on tree branches
   if (season === "winter") {
     for (let y = SKY_ROWS; y < groundStart - 1; y++) {
@@ -794,6 +807,43 @@ export function renderFrame(
         const h = hash(x * 43 + y * 89 + 5678)
         if (h % 22 !== 0) continue
         buffer[y]![x] = { char: "*", color: "#b0c8e8" }
+      }
+    }
+  }
+
+  // 7d2. Snow caps — top of each canopy column gets a solid white-blue cap in winter
+  if (season === "winter") {
+    for (let x = 0; x < width; x++) {
+      for (let y = SKY_ROWS; y < groundStart - 1; y++) {
+        const cell = buffer[y]![x]
+        if (cell?.color) {
+          // Top of this canopy column — blend existing color toward snow white
+          buffer[y]![x] = { char: "█", color: lerpColor(cell.color, "#d0e4f4", 0.75) }
+          break
+        }
+      }
+    }
+  }
+
+  // 7d3. Canopy sway — top 1–2 tree rows shift 1px in wind, driven by twinkle seed oscillation
+  if (options.windStrength && options.windStrength >= 1) {
+    const seed = options.twinkleSeed ?? 0
+    const sway = Math.sin(seed * 0.6) > 0 ? 1 : -1
+    const swayRows = options.windStrength === 2 ? 2 : 1
+    for (let dy = 0; dy < swayRows; dy++) {
+      const y = SKY_ROWS + dy
+      if (y >= buffer.length) continue
+      const row = buffer[y]!
+      const filled: { x: number; cell: { char: string; color: string | null } }[] = []
+      for (let x = 0; x < width; x++) {
+        if (row[x]!.color !== null) {
+          filled.push({ x, cell: { ...row[x]! } })
+          row[x] = { char: "█", color: getSkyColor(y, period, blend) }
+        }
+      }
+      for (const { x, cell } of filled) {
+        const nx = Math.max(0, Math.min(width - 1, x + sway))
+        if (!row[nx]!.color) row[nx] = cell
       }
     }
   }

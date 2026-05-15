@@ -83,6 +83,7 @@ let fireflies: { x: number; y: number; lit: boolean; blinkTimer: number }[] = []
 let owl: { x: number; y: number } | null = null
 let butterfly: { x: number; y: number; color: string; dx: number; dy: number } | null = null
 let clouds: { xf: number; y: number; width: number; density: 0|1|2 }[] = []
+let crows: { x: number; speed: number; pecking: boolean; peckTimer: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -114,6 +115,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     owl: owl ?? undefined,
     butterfly: butterfly ?? undefined,
     clouds: clouds.length > 0 ? clouds.map(c => ({ x: Math.floor(c.xf), y: c.y, width: c.width, density: c.density })) : undefined,
+    crows: crows.length > 0 ? crows.map(c => ({ x: c.x, pecking: c.pecking })) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -316,8 +318,18 @@ export async function viewer(): Promise<void> {
       if (weasel.x > width + 3) { weasel = null }
       else {
         weasel.x += weasel.speed
-        // sinuous y oscillation between ground rows
         weasel.y = 12 + Math.round(Math.sin(weasel.x * 0.3) * 0.5 + 0.5)
+      }
+    }
+    // Crows: walk slowly, occasionally stop to peck
+    crows = crows.filter(c => c.x <= (process.stdout.columns || 80) + 3)
+    for (const c of crows) {
+      if (c.pecking) {
+        c.peckTimer--
+        if (c.peckTimer <= 0) c.pecking = false
+      } else {
+        c.x += c.speed
+        if (Math.random() < 0.08) { c.pecking = true; c.peckTimer = 3 + Math.floor(Math.random() * 6) }
       }
     }
   }, 400)
@@ -488,6 +500,23 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleWeaselSpawn()
+
+  // Crows/ravens: autumn/winter ground scavengers, 1-3 at a time, every 15-30 min
+  function scheduleCrowVisit(): void {
+    const delay = (15 + Math.random() * 15) * 60 * 1000
+    setTimeout(() => {
+      const m = new Date().getMonth()
+      const isAutumnWinter = m >= 8 || m <= 1
+      if (isAutumnWinter && crows.length < 3) {
+        const count = 1 + Math.floor(Math.random() * 3)
+        for (let i = 0; i < count; i++) {
+          crows.push({ x: -3 - i * 4, speed: 1, pecking: false, peckTimer: 0 })
+        }
+      }
+      scheduleCrowVisit()
+    }, delay)
+  }
+  scheduleCrowVisit()
 
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn
   setInterval(() => {

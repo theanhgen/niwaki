@@ -77,6 +77,8 @@ let heron: { x: number } | null = null
 let dragonfly: { x: number; y: number } | null = null
 let streamFish: { x: number; leftward: boolean } | null = null
 let woodpecker: { x: number; y: number; peck: boolean } | null = null
+let weasel: { x: number; y: number; speed: number } | null = null
+let frog: { x: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -102,6 +104,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     dragonfly: dragonfly ?? undefined,
     streamFish: streamFish ?? undefined,
     woodpecker: woodpecker ?? undefined,
+    weasel: weasel ?? undefined,
+    frog: frog ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -231,6 +235,12 @@ export async function viewer(): Promise<void> {
     if (isRaining && now > rainUntil) {
       isRaining = false
       postRainUntil = now + 5 * 60 * 1000
+      // Frog emerges after rain — hopping to stream edge
+      if (!frog && Math.random() < 0.6) {
+        const width = process.stdout.columns || 80
+        frog = { x: Math.floor(width * 0.3 + Math.random() * width * 0.4) }
+        setTimeout(() => { frog = null }, (5 + Math.random() * 10) * 60 * 1000)
+      }
     } else if (!isRaining && Math.random() < 0.20) {
       isRaining = true
       rainUntil = now + (3 + Math.random() * 7) * 60 * 1000
@@ -260,6 +270,15 @@ export async function viewer(): Promise<void> {
           squirrel.paused = true
           squirrel.pauseLeft = 2 + Math.floor(Math.random() * 4)
         }
+      }
+    }
+    if (weasel) {
+      const width = process.stdout.columns || 80
+      if (weasel.x > width + 3) { weasel = null }
+      else {
+        weasel.x += weasel.speed
+        // sinuous y oscillation between ground rows
+        weasel.y = 12 + Math.round(Math.sin(weasel.x * 0.3) * 0.5 + 0.5)
       }
     }
   }, 400)
@@ -416,6 +435,20 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleWoodpecker()
+
+  // Weasel: fast solitary hunter, dusk/dawn, every 20-40 min, dashes across ground
+  function scheduleWeaselSpawn(): void {
+    const delay = (20 + Math.random() * 20) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isDawnDusk = (h >= 4 && h < 8) || (h >= 18 && h < 22)
+      if (isDawnDusk && !weasel) {
+        weasel = { x: -3, y: 12, speed: 2 + Math.floor(Math.random() * 2) }
+      }
+      scheduleWeaselSpawn()
+    }, delay)
+  }
+  scheduleWeaselSpawn()
 
   // Lightning + dragonfly dart: 500ms tick
   setInterval(() => {

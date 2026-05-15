@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -660,6 +660,19 @@ export function renderFrame(
     buffer[undergrowthY]![sx - 1] = { char: "ø", color: "#d0a850" }
   }
 
+  // Weasel — fastest ground animal, turns ermine-white in winter
+  if (options.weasel && options.weasel.x >= 0 && options.weasel.x < width) {
+    const { x: wx, y: wy } = options.weasel
+    const weaselColor = season === "winter" ? "#e8e8d8" : "#c8a060"
+    if (wy >= 0 && wy < buffer.length) buffer[wy]![wx] = { char: ">", color: weaselColor }
+    if (wx - 1 >= 0 && wy >= 0) buffer[wy]![wx - 1] = { char: "-", color: weaselColor }
+  }
+
+  // Frog — appears near stream after rain, small green o
+  if (options.frog && options.frog.x >= 0 && options.frog.x < width) {
+    buffer[undergrowthY]![options.frog.x] = { char: "o", color: "#4a8828" }
+  }
+
   // 7c. Deer — grazes at undergrowth level at dawn/dusk
   if (options.deer) {
     const dy = groundStart - 1
@@ -940,6 +953,18 @@ export function renderFrame(
     }
   }
 
+  // Valley fog — cold air pools at ground level on autumn/winter nights
+  if ((season === "winter" || season === "autumn") && (period === "night" || (period === "dusk" && blend > 0.6))) {
+    const fogDensity = season === "winter" ? 3 : 5
+    for (let x = 0; x < width; x++) {
+      const h = hash(x * 53 + 55555)
+      if (h % fogDensity !== 0) continue
+      if (buffer[undergrowthY]![x]?.color === null) {
+        buffer[undergrowthY]![x] = { char: h % 3 === 0 ? "▒" : "░", color: "#7a8898" }
+      }
+    }
+  }
+
   // 8e. Fog (wilt)
   applyFog(buffer, effectiveWilt, width)
 
@@ -947,13 +972,18 @@ export function renderFrame(
   const lines: string[] = []
   for (let y = 0; y < SCENE_HEIGHT - SPACER_ROWS - STATS_ROWS - CTA_ROWS; y += 1) {
     let line = ""
+    const skyBg = y < SKY_ROWS ? getSkyColor(y, period, blend) : null
     for (const cell of buffer[y]!) {
       if (!cell.color) {
         line += cell.char
       } else {
         let color = seasonTintColor(cell.color, season)
         if (effectiveWilt > 0 && y >= SKY_ROWS) color = wiltColor(color, effectiveWilt)
-        line += chalk.hex(color)(cell.char)
+        if (skyBg !== null && cell.char !== "█") {
+          line += chalk.bgHex(skyBg).hex(color)(cell.char)
+        } else {
+          line += chalk.hex(color)(cell.char)
+        }
       }
     }
     lines.push(line)

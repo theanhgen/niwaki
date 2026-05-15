@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[] } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1276,11 +1276,11 @@ export function renderFrame(
         }
       }
     }
-    // Horizontal rain streaks across whole scene during storm phase
-    for (let y = 1; y < groundStart; y++) {
+    // Horizontal rain streaks — sky rows only to avoid mid-forest blue band
+    for (let y = 1; y < SKY_ROWS; y++) {
       for (let x = 0; x < width; x++) {
         const h = hash(x * 37 + y * 83 + bseed * 17 + 66661)
-        if (h % 6 === 0 && !buffer[y]![x]?.color) {
+        if (h % 7 === 0 && !buffer[y]![x]?.color) {
           buffer[y]![x] = { char: "╌", color: "#5888a8" }
         }
       }
@@ -1413,7 +1413,7 @@ export function renderFrame(
     }
   }
 
-  // 8o. Morning dew — sparkle dots on undergrowth and low vegetation at dawn
+  // 8o. Morning dew — sparkle dots on bare undergrowth patches at dawn
   if (options.morningDew) {
     for (let x = 0; x < width; x++) {
       const h = hash(x * 83 + 44443)
@@ -1422,12 +1422,37 @@ export function renderFrame(
         if (!buffer[dewY]![x]?.color)
           buffer[dewY]![x] = { char: "·", color: lerpColor("#88c0d8", "#c0e4f0", (h & 15) / 15) }
       }
-      // Also dew on lower canopy edges exposed to air
-      if (h % 9 === 0) {
-        const lowY = groundStart - 2
-        const cell = buffer[lowY]![x]
-        if (cell?.color) buffer[lowY]![x] = { char: cell.char, color: lerpColor(cell.color, "#b8ddf0", 0.25) }
+    }
+  }
+
+  // 8p. Spring pollen drift — light yellow motes drifting through canopy
+  if (options.pollenDrift && options.pollenDrift.length > 0) {
+    const pollenColors = ["#e8dc60", "#f0e880", "#d8d048", "#f4f0a0"]
+    for (const { x, y } of options.pollenDrift) {
+      if (x < 0 || x >= width || y < 0 || y >= groundStart) continue
+      if (!buffer[y]![x]?.color) {
+        const h = hash(x * 41 + y * 83 + 11113)
+        buffer[y]![x] = { char: "·", color: pollenColors[h % pollenColors.length]! }
       }
+    }
+  }
+
+  // 8q. Spider webs — dawn/dusk, horizontal spans between trees in upper canopy
+  if (options.spiderWebs && options.spiderWebs.length > 0) {
+    for (const { x: wx, span } of options.spiderWebs) {
+      const webY = SKY_ROWS + 1
+      for (let i = 0; i < span; i++) {
+        const cx = wx + i
+        if (cx < 0 || cx >= width) continue
+        const cell = buffer[webY]![cx]
+        if (cell?.color) continue
+        const webChar = i === 0 || i === span - 1 ? "·" : i % 3 === 1 ? "╌" : "─"
+        buffer[webY]![cx] = { char: webChar, color: lerpColor("#a0b0b8", "#d0dce4", i / span) }
+      }
+      // Dew on web strand
+      const midX = wx + Math.floor(span / 2)
+      if (midX >= 0 && midX < width && !buffer[webY]![midX]?.color)
+        buffer[webY]![midX] = { char: "◦", color: "#c8e8f8" }
     }
   }
 

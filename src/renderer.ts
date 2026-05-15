@@ -421,6 +421,21 @@ export function renderFrame(
     }
   }
 
+  // Rainbow — post-rain arc in upper sky, ROYGBV bands across rows 1-2
+  if (options.postRain && !options.isRaining) {
+    const arcColors = ["#ff5050", "#ff9030", "#f0d020", "#50c050", "#3080e0", "#8040c0"] as const
+    const arcStart = Math.floor(width * 0.12)
+    const arcEnd = Math.floor(width * 0.88)
+    for (let y = 1; y <= 2; y++) {
+      for (let x = arcStart; x < arcEnd; x++) {
+        if (hash(x * 11 + y * 37 + 66666) % 3 !== 0) continue
+        const t = (x - arcStart) / (arcEnd - arcStart)
+        const ci = Math.min(arcColors.length - 1, Math.floor(t * arcColors.length))
+        buffer[y]![x] = { char: "░", color: arcColors[ci]! }
+      }
+    }
+  }
+
   // 2d. Comet — rare slow-moving sky object, head + dimming tail
   if (options.comet) {
     const { x: cx, y: cy } = options.comet
@@ -646,6 +661,19 @@ export function renderFrame(
     if (variant < 4) buffer[undergrowthY]![x] = parts[variant]!
   }
 
+  // Wildflowers — spring/summer, scattered colored blooms in undergrowth
+  if (season === "spring" || season === "summer") {
+    const springPalette = ["#e870b8", "#f8d030", "#70c8f8", "#e8e070"] as const
+    const summerPalette = ["#f09030", "#ffffff", "#f8f040", "#40d0a0"] as const
+    const palette = season === "spring" ? springPalette : summerPalette
+    for (let x = 0; x < width; x++) {
+      if (buffer[undergrowthY]![x]?.color !== null) continue
+      const h = hash(x * 97 + forest.trees.length * 31 + 55555)
+      if (h % 7 !== 0) continue
+      buffer[undergrowthY]![x] = { char: h % 4 === 0 ? "*" : "·", color: palette[h % palette.length]! }
+    }
+  }
+
   // Fairy ring — permanent mushroom circle, unlocked after 3+ rain events
   // Glows blue-green at night (bioluminescence)
   const isNightTime = period === "night" || period === "dusk"
@@ -778,6 +806,19 @@ export function renderFrame(
         if (h % mistDensity !== 0) continue
         const mistChar = h % 3 === 0 ? "▒" : "░"
         buffer[y]![x] = { char: mistChar, color: "#7a8fa8" }
+      }
+    }
+  }
+
+  // Evening mist — purple-grey ground fog at dusk, hugs the forest floor
+  if (period === "dusk" && blend > 0.3) {
+    const mistDensity = Math.max(3, Math.round(7 * (1 - blend) + 3))
+    const mistStart = groundStart - 2
+    for (let y = mistStart; y < groundStart + GROUND_ROWS; y++) {
+      for (let x = 0; x < width; x++) {
+        const h = hash(x * 41 + y * 73 + 88888)
+        if (h % mistDensity !== 0) continue
+        buffer[y]![x] = { char: h % 3 === 0 ? "▒" : "░", color: "#8a7a9a" }
       }
     }
   }

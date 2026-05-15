@@ -108,6 +108,8 @@ let boar: { x: number; speed: number; rootingTimer: number } | null = null
 let dawnChorus: { x: number; y: number; life: number }[] = []
 let beetle: { x: number; speed: number } | null = null
 let puddles: { x: number; until: number }[] = []
+let groundFog = false
+let moth: { x: number; y: number; color: string; dx: number; dy: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -164,6 +166,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     dawnChorus: dawnChorus.length > 0 ? dawnChorus : undefined,
     beetle: beetle ? { x: beetle.x } : undefined,
     puddles: puddles.length > 0 ? puddles.map(p => p.x) : undefined,
+    groundFog: groundFog || undefined,
+    moth: moth ? { x: Math.floor(moth.x), y: Math.floor(moth.y), color: moth.color } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -353,6 +357,16 @@ export async function viewer(): Promise<void> {
       }
       const bounds = getStreamBounds(forest!, width)
       if (!bounds || otter.x > bounds.x + bounds.w + 4) otter = null
+    }
+    // Moth — erratic dusk-to-dawn drifter through canopy rows
+    if (moth) {
+      moth.x += moth.dx + (Math.random() - 0.5) * 0.8
+      moth.y += moth.dy + (Math.random() - 0.5) * 0.5
+      moth.dy *= 0.9
+      if (moth.x < 0) moth.dx = Math.abs(moth.dx)
+      if (moth.x >= width) moth.dx = -Math.abs(moth.dx)
+      if (moth.y < SKY_ROWS + 1) moth.dy = Math.abs(moth.dy) * 0.5
+      if (moth.y > SKY_ROWS + 5) moth.dy = -Math.abs(moth.dy) * 0.5
     }
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
@@ -1098,6 +1112,45 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleButterflySpawn()
+
+  // Moth: nocturnal, dusk to dawn, spring/summer/autumn — spawns every 6-15 min
+  function scheduleMothSpawn(): void {
+    const delay = (6 + Math.random() * 9) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const m = new Date().getMonth()
+      const isNight = h >= 20 || h < 5
+      const isNotWinter = m >= 2 && m <= 10
+      if (isNight && isNotWinter && !moth && (forest?.trees.length ?? 0) >= 3) {
+        const width = process.stdout.columns || 80
+        const mothColors = ["#c8a870", "#a08850", "#b0a088", "#908070", "#c0b088"]
+        moth = {
+          x: Math.random() * width,
+          y: SKY_ROWS + 1 + Math.random() * 3,
+          color: mothColors[Math.floor(Math.random() * mothColors.length)]!,
+          dx: Math.random() < 0.5 ? -0.6 : 0.6,
+          dy: 0,
+        }
+        setTimeout(() => { moth = null }, (4 + Math.random() * 8) * 60 * 1000)
+      }
+      scheduleMothSpawn()
+    }, delay)
+  }
+  scheduleMothSpawn()
+
+  // Ground fog: cool mornings in spring/autumn, check every 5 min
+  setInterval(() => {
+    const h = new Date().getHours()
+    const m = new Date().getMonth()
+    const isMorning = h >= 5 && h < 9
+    const isCoolSeason = (m >= 2 && m <= 4) || (m >= 8 && m <= 10)
+    groundFog = isMorning && isCoolSeason && !isRaining && !drought
+  }, 5 * 60 * 1000)
+  ;(() => {
+    const h = new Date().getHours()
+    const m = new Date().getMonth()
+    groundFog = (h >= 5 && h < 9) && ((m >= 2 && m <= 4) || (m >= 8 && m <= 10)) && !isRaining && !drought
+  })()
 
   // Lightning + dragonfly dart: 500ms tick
   setInterval(() => {

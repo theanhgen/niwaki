@@ -407,6 +407,11 @@ export function renderFrame(
   const { period, blend } = getTimeOfDay(now)
   const season = getSeason(now.getMonth())
 
+  // Hoisted stream bounds — computed once, used by every section that needs stream position
+  const forestSeed = forest.createdAt.slice(0, 10).split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
+  const streamX = Math.floor(width * 0.15 + hash(forestSeed * 13 + 77) % Math.floor(width * 0.65))
+  const streamW = 14 + hash(streamX * 7 + 88) % 8
+
   // 2. Fill sky gradient
   for (let y = 0; y < SKY_ROWS; y++) {
     const skyColor = getSkyColor(y, period, blend)
@@ -638,13 +643,10 @@ export function renderFrame(
 
   // Reed mace (bulrush/cattail) — beside stream; `◉` brown seed head on `|` stem; summer/autumn
   if ((season === "summer" || season === "autumn") && forest.trees.length >= 10) {
-    const rmSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const rmStreamX = Math.floor(width * 0.15 + hash(rmSeed * 13 + 77) % Math.floor(width * 0.65))
-    const rmStreamW = 14 + hash(rmStreamX * 7 + 88) % 8
-    for (let dx = -4; dx <= rmStreamW + 4; dx++) {
-      const rx = rmStreamX + dx
+    for (let dx = -4; dx <= streamW + 4; dx++) {
+      const rx = streamX + dx
       if (rx < 0 || rx >= width) continue
-      if (hash(rx * 41 + rmSeed + 11113) % 7 !== 0) continue
+      if (hash(rx * 41 + forestSeed + 11113) % 7 !== 0) continue
       const stalkY = undergrowthY
       const headY = undergrowthY - 1
       if (!buffer[stalkY]![rx]?.color) buffer[stalkY]![rx] = { char: "|", color: "#7a6030" }
@@ -652,16 +654,14 @@ export function renderFrame(
     }
   }
 
-  // Purple loosestrife — late summer, tall spikes beside stream; vivid violet
-  if (season === "summer" && forest.trees.length >= 10) {
+  // Purple loosestrife — late summer (July-Sept), tall spikes beside stream; vivid violet
+  if ((season === "summer" || season === "autumn") && forest.trees.length >= 10) {
     const m = now.getMonth()
     if (m >= 6 && m <= 8) { // July-September
-      const plSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-      const plStreamX = Math.floor(width * 0.15 + hash(plSeed * 13 + 77) % Math.floor(width * 0.65))
       for (let dx = -5; dx <= 5; dx++) {
-        const px = plStreamX + dx
+        const px = streamX + dx
         if (px < 0 || px >= width) continue
-        if (!buffer[undergrowthY]![px]?.color && hash(px * 37 + plSeed + 55551) % 4 === 0)
+        if (!buffer[undergrowthY]![px]?.color && hash(px * 37 + forestSeed + 55551) % 4 === 0)
           buffer[undergrowthY]![px] = { char: "↑", color: "#9040b8" }
       }
     }
@@ -669,8 +669,7 @@ export function renderFrame(
 
   // Dog rose — summer pink blooms in bramble/edge patches; hedgerow classic
   if (season === "summer" && forest.trees.length >= 8) {
-    const roseSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const roseX = Math.floor(width * 0.65 + hash(roseSeed * 7 + 33337) % Math.floor(width * 0.25))
+    const roseX = Math.floor(width * 0.65 + hash(forestSeed * 7 + 33337) % Math.floor(width * 0.25))
     for (let dx = 0; dx < 4; dx++) {
       const rx = roseX + dx
       if (rx >= width) continue
@@ -681,12 +680,11 @@ export function renderFrame(
     }
   }
 
-  // Elderflower — spring, flat white flower heads on elder shrubs
-  if (season === "spring" && forest.trees.length >= 10) {
+  // Elderflower — May-July, flat white flower heads on elder shrubs
+  if ((season === "spring" || season === "summer") && forest.trees.length >= 10) {
     const m = now.getMonth()
     if (m >= 4 && m <= 6) { // May-July
-      const elderSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-      const elderX = Math.floor(width * 0.35 + hash(elderSeed * 11 + 22221) % Math.floor(width * 0.3))
+      const elderX = Math.floor(width * 0.35 + hash(forestSeed * 11 + 22221) % Math.floor(width * 0.3))
       for (let dx = 0; dx < 3; dx++) {
         const ex = elderX + dx
         if (ex >= width) continue
@@ -969,9 +967,6 @@ export function renderFrame(
 
   // Stream — meanders through second ground row once forest is established (grove+)
   if (forest.trees.length >= 10) {
-    const createdSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const streamX = Math.floor(width * 0.15 + hash(createdSeed * 13 + 77) % Math.floor(width * 0.65))
-    const streamW = 14 + hash(streamX * 7 + 88) % 8
     const seed = options.twinkleSeed ?? 0
     const streamColor = options.isRaining ? "#3a7ab0" : options.postRain ? "#5aaaca" : "#2a6a8a"
     for (let i = 0; i < streamW; i++) {
@@ -1011,11 +1006,8 @@ export function renderFrame(
 
   // Stream morning mist — cool air above water at dawn, pale wisps on second ground row
   if ((period === "dawn" || (period === "day" && blend < 0.2)) && forest.trees.length >= 10 && !options.isRaining) {
-    const createdSeedM = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const mStreamX = Math.floor(width * 0.15 + hash(createdSeedM * 13 + 77) % Math.floor(width * 0.65))
-    const mStreamW = 14 + hash(mStreamX * 7 + 88) % 8
-    for (let i = 0; i < mStreamW; i++) {
-      const sx = mStreamX + i
+    for (let i = 0; i < streamW; i++) {
+      const sx = streamX + i
       if (sx < 0 || sx >= width) continue
       if (hash(sx * 31 + 99991) % 3 === 0)
         buffer[groundStart]![sx] = { char: "░", color: lerpColor("#c0c8d0", "#a8b8c8", hash(sx * 17 + 44443) % 10 / 10) }
@@ -1026,12 +1018,10 @@ export function renderFrame(
   if (season === "spring" && forest.trees.length >= 5) {
     const m = now.getMonth()
     if (m >= 1 && m <= 2) { // Feb-March
-      const fsSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-      const fsStreamX = Math.floor(width * 0.15 + hash(fsSeed * 13 + 77) % Math.floor(width * 0.65))
       for (let dx = 1; dx <= 5; dx++) {
-        const sx = fsStreamX + dx
+        const sx = streamX + dx
         if (sx < 0 || sx >= width) continue
-        if (hash(sx * 53 + fsSeed + 22221) % 3 === 0)
+        if (hash(sx * 53 + forestSeed + 22221) % 3 === 0)
           buffer[groundStart + 1]![sx] = { char: "○", color: "#6a8050" }
       }
     }
@@ -1039,25 +1029,19 @@ export function renderFrame(
 
   // Water crowfoot — white floating flowers on stream surface in summer; `○` on water
   if (season === "summer" && forest.trees.length >= 10 && !options.isRaining) {
-    const wcSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const wcStreamX = Math.floor(width * 0.15 + hash(wcSeed * 13 + 77) % Math.floor(width * 0.65))
-    const wcStreamW = 14 + hash(wcStreamX * 7 + 88) % 8
-    for (let i = 2; i < wcStreamW - 2; i++) {
-      const sx = wcStreamX + i
+    for (let i = 2; i < streamW - 2; i++) {
+      const sx = streamX + i
       if (sx < 0 || sx >= width) continue
-      if (hash(sx * 43 + wcSeed + 55553) % 7 === 0)
+      if (hash(sx * 43 + forestSeed + 55553) % 7 === 0)
         buffer[groundStart + 1]![sx] = { char: "○", color: "#f0f0e8" }
     }
   }
 
   // Rain splashes on stream — `·` drip rings when raining
   if (options.isRaining && forest.trees.length >= 10) {
-    const createdSeed2 = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const sStreamX = Math.floor(width * 0.15 + hash(createdSeed2 * 13 + 77) % Math.floor(width * 0.65))
-    const sStreamW = 14 + hash(sStreamX * 7 + 88) % 8
     const seed2 = options.twinkleSeed ?? 0
-    for (let i = 0; i < sStreamW; i++) {
-      const sx = sStreamX + i
+    for (let i = 0; i < streamW; i++) {
+      const sx = streamX + i
       if (sx < 0 || sx >= width) continue
       if (hash(sx * 29 + seed2 * 17 + 88887) % 4 === 0)
         buffer[groundStart + 1]![sx] = { char: "·", color: "#8ab8d0" }
@@ -1066,11 +1050,8 @@ export function renderFrame(
 
   // Beaver dam — mature forest (≥40 trees), deterministic structure across stream
   if (forest.trees.length >= 40) {
-    const damSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const damStreamX = Math.floor(width * 0.15 + hash(damSeed * 13 + 77) % Math.floor(width * 0.65))
-    const damStreamW = 14 + hash(damStreamX * 7 + 88) % 8
-    const damStart = damStreamX + Math.floor(damStreamW * 0.3)
-    const damW = 5 + hash(damSeed * 3 + 55551) % 4
+    const damStart = streamX + Math.floor(streamW * 0.3)
+    const damW = 5 + hash(forestSeed * 3 + 55551) % 4
     for (let i = 0; i < damW; i++) {
       const dx = damStart + i
       if (dx < 0 || dx >= width) continue
@@ -1083,12 +1064,9 @@ export function renderFrame(
 
   // Stream bank rushes — tall `|` reeds at stream margins, spring-autumn
   if (season !== "winter" && forest.trees.length >= 10) {
-    const createdSeedR = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const rStreamX = Math.floor(width * 0.15 + hash(createdSeedR * 13 + 77) % Math.floor(width * 0.65))
-    const rStreamW = 14 + hash(rStreamX * 7 + 88) % 8
     const reedColor = season === "autumn" ? "#8a7030" : "#4a7830"
-    for (const side of [-1, rStreamW] as const) {
-      const rx = rStreamX + side
+    for (const side of [-1, streamW] as const) {
+      const rx = streamX + side
       if (rx < 0 || rx >= width) continue
       for (let dy = 1; dy <= 2; dy++) {
         const ry = groundStart - dy
@@ -1117,13 +1095,10 @@ export function renderFrame(
 
   // Stream bed stones — pebbles visible in clear water, especially in low-flow seasons
   if (forest.trees.length >= 10 && !options.isRaining && season !== "winter") {
-    const createdSeedS = forest.createdAt.slice(0, 10).split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
-    const ssX = Math.floor(width * 0.15 + hash(createdSeedS * 13 + 77) % Math.floor(width * 0.65))
-    const ssW = 14 + hash(ssX * 7 + 88) % 8
-    for (let i = 1; i < ssW - 1; i++) {
-      const sx = ssX + i
+    for (let i = 1; i < streamW - 1; i++) {
+      const sx = streamX + i
       if (sx < 0 || sx >= width) continue
-      if (hash(sx * 43 + createdSeedS * 7 + 55553) % 5 !== 0) continue
+      if (hash(sx * 43 + forestSeed * 7 + 55553) % 5 !== 0) continue
       const gy = groundStart + 1
       const cell = buffer[gy]![sx]
       if (cell?.char === "~" || cell?.char === "≈")
@@ -1133,13 +1108,10 @@ export function renderFrame(
 
   // Water striders — tiny `×` insects walking on stream surface, spring-autumn
   if (season !== "winter" && forest.trees.length >= 10) {
-    const createdSeedW = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const wsStreamX = Math.floor(width * 0.15 + hash(createdSeedW * 13 + 77) % Math.floor(width * 0.65))
-    const wsStreamW = 14 + hash(wsStreamX * 7 + 88) % 8
     const seedW = options.twinkleSeed ?? 0
     const striderCount = 2 + hash(seedW * 7 + 33331) % 3
     for (let i = 0; i < striderCount; i++) {
-      const sx = wsStreamX + 1 + hash(i * 17 + seedW * 5 + 44441) % (wsStreamW - 2)
+      const sx = streamX + 1 + hash(i * 17 + seedW * 5 + 44441) % (streamW - 2)
       if (sx < 0 || sx >= width) continue
       if (buffer[groundStart + 1]![sx]?.char === "~" || buffer[groundStart + 1]![sx]?.char === "≈")
         buffer[groundStart + 1]![sx] = { char: "×", color: "#3a5870" }
@@ -1148,12 +1120,9 @@ export function renderFrame(
 
   // Mayfly hatch — spring/early summer mass emergence above stream, rising `|` specks
   if (options.mayflyHatch && forest.trees.length >= 10) {
-    const createdSeedMF = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const mfStreamX = Math.floor(width * 0.15 + hash(createdSeedMF * 13 + 77) % Math.floor(width * 0.65))
-    const mfStreamW = 14 + hash(mfStreamX * 7 + 88) % 8
     const seedMF = options.twinkleSeed ?? 0
-    for (let i = 0; i < mfStreamW; i++) {
-      const mx = mfStreamX + i
+    for (let i = 0; i < streamW; i++) {
+      const mx = streamX + i
       if (mx < 0 || mx >= width) continue
       for (let rise = 1; rise <= 5; rise++) {
         const my = groundStart + 1 - rise
@@ -1385,15 +1354,12 @@ export function renderFrame(
   // Stream flooding — heavy/post rain, stream overflows to undergrowth row
   if ((options.isRaining && (options.windStrength ?? 0) >= 1) || (options.postRain && season !== "winter")) {
     if (forest.trees.length >= 10) {
-      const createdSeedF = forest.createdAt.slice(0, 10).split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
-      const floodStreamX = Math.floor(width * 0.15 + hash(createdSeedF * 13 + 77) % Math.floor(width * 0.65))
-      const floodStreamW = 14 + hash(floodStreamX * 7 + 88) % 8
       if (options.isRaining) {
         // Expand stream to undergrowth row at edges
         const floodColor = "#3a7aaa"
         for (let i = 0; i < 2; i++) {
-          const ex = floodStreamX - 1 - i
-          const ex2 = floodStreamX + floodStreamW + i
+          const ex = streamX - 1 - i
+          const ex2 = streamX + streamW + i
           if (ex >= 0 && !buffer[undergrowthY]![ex]?.color)
             buffer[undergrowthY]![ex] = { char: "~", color: floodColor }
           if (ex2 < width && !buffer[undergrowthY]![ex2]?.color)
@@ -1407,11 +1373,8 @@ export function renderFrame(
   if (season === "spring" && forest.trees.length >= 10) {
     const m = now.getMonth()
     if (m >= 2 && m <= 5) { // March-June
-      const createdSeedN = forest.createdAt.slice(0, 10).split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
-      const newtStreamX = Math.floor(width * 0.15 + hash(createdSeedN * 13 + 77) % Math.floor(width * 0.65))
-      const newtStreamW = 14 + hash(newtStreamX * 7 + 88) % 8
       const seedN = options.twinkleSeed ?? 0
-      const newtX = newtStreamX + 2 + hash(seedN * 13 + 44441) % (newtStreamW - 4)
+      const newtX = streamX + 2 + hash(seedN * 13 + 44441) % (streamW - 4)
       const newtY = groundStart + 1
       if (newtX >= 0 && newtX < width && (buffer[newtY]![newtX]?.char === "~" || buffer[newtY]![newtX]?.char === "≈"))
         buffer[newtY]![newtX] = { char: "∫", color: "#8a4838" } // dark red-brown
@@ -1713,11 +1676,8 @@ export function renderFrame(
 
   // Damselfly — slender spring/summer near stream; blue/violet, thinner than dragonfly
   if ((season === "spring" || season === "summer") && period === "day" && forest.trees.length >= 10) {
-    const createdSeedDf = forest.createdAt.slice(0, 10).split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
-    const dfStreamX = Math.floor(width * 0.15 + hash(createdSeedDf * 13 + 77) % Math.floor(width * 0.65))
-    const dfStreamW = 14 + hash(dfStreamX * 7 + 88) % 8
     const seed8 = options.twinkleSeed ?? 0
-    const dfX = dfStreamX + hash(seed8 * 17 + 55551) % dfStreamW
+    const dfX = streamX + hash(seed8 * 17 + 55551) % streamW
     const dfY = groundStart - 2 + hash(seed8 * 11 + 44443) % 2
     const dfColors = ["#4060e0", "#8030d0", "#40a0e0"]
     if (dfX >= 0 && dfX < width && dfY >= SKY_ROWS && dfY < groundStart && !buffer[dfY]![dfX]?.color)
@@ -2272,8 +2232,6 @@ export function renderFrame(
     const m = now.getMonth()
     const isGarlicTime = m >= 3 && m <= 4  // April-May
     if (isGarlicTime) {
-      const createdSeed2 = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-      const streamX = Math.floor(width * 0.15 + hash(createdSeed2 * 13 + 77) % Math.floor(width * 0.65))
       // Dense carpet near stream bank where damp soil suits garlic
       for (let dx = -6; dx <= 6; dx++) {
         const gx = streamX + dx
@@ -2745,9 +2703,6 @@ export function renderFrame(
     }
     // Dried stream bed — sandy/rocky when drought peaks
     if (dri > 0.5 && forest.trees.length >= 10) {
-      const createdSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-      const streamX = Math.floor(width * 0.15 + hash(createdSeed * 13 + 77) % Math.floor(width * 0.65))
-      const streamW = 14 + hash(streamX * 7 + 88) % 8
       for (let i = 0; i < streamW; i++) {
         const sx = streamX + i
         if (sx < 0 || sx >= width) continue
@@ -2964,12 +2919,10 @@ export function renderFrame(
   if (season === "spring" && forest.trees.length >= 8) {
     const m = now.getMonth()
     if (m >= 2 && m <= 4) {
-      const mmSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-      const mmStreamX = Math.floor(width * 0.15 + hash(mmSeed * 13 + 77) % Math.floor(width * 0.65))
       for (let dx = -3; dx <= 3; dx++) {
-        const mx = mmStreamX + dx
+        const mx = streamX + dx
         if (mx < 0 || mx >= width) continue
-        if (!buffer[undergrowthY]![mx]?.color && hash(mx * 29 + mmSeed + 33337) % 3 === 0)
+        if (!buffer[undergrowthY]![mx]?.color && hash(mx * 29 + forestSeed + 33337) % 3 === 0)
           buffer[undergrowthY]![mx] = { char: "✦", color: "#f0c020" }
       }
     }
@@ -3131,9 +3084,6 @@ export function renderFrame(
 
   // 8t. Otter — swims through stream, dives occasionally
   if (options.otter && forest.trees.length >= 10) {
-    const createdSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-    const streamX = Math.floor(width * 0.15 + hash(createdSeed * 13 + 77) % Math.floor(width * 0.65))
-    const streamW = 14 + hash(streamX * 7 + 88) % 8
     const ox = options.otter.x
     const otterY = groundStart + 1
     if (ox >= streamX && ox < streamX + streamW && ox >= 0 && ox < width) {
@@ -3274,13 +3224,10 @@ export function renderFrame(
   if (season === "autumn") {
     const lm = now.getMonth()
     if (lm >= 9 && lm <= 10) {
-      const createdSeedA = forest.createdAt.slice(0, 10).split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
-      const streamXA = Math.floor(width * 0.15 + hash(createdSeedA * 13 + 77) % Math.floor(width * 0.65))
-      const streamWA = 14 + hash(streamXA * 7 + 88) % 8
       const leafSeed = options.twinkleSeed ?? 0
       const leafColors = ["#c06830", "#a05020", "#d07820", "#885020"]
       for (let i = 0; i < 4; i++) {
-        const lx = streamXA + 1 + hash(i * 31 + leafSeed * 11 + 44441) % (streamWA - 2)
+        const lx = streamX + 1 + hash(i * 31 + leafSeed * 11 + 44441) % (streamW - 2)
         if (lx < 0 || lx >= width) continue
         const fy = groundStart + 1
         if (buffer[fy]![lx]?.char === "~" || buffer[fy]![lx]?.char === "≈")

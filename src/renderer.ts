@@ -1022,6 +1022,21 @@ export function renderFrame(
     }
   }
 
+  // Frog spawn — early spring (Feb-March), jelly-mass clusters in still stream shallows; `○`
+  if (season === "spring" && forest.trees.length >= 5) {
+    const m = now.getMonth()
+    if (m >= 1 && m <= 2) { // Feb-March
+      const fsSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+      const fsStreamX = Math.floor(width * 0.15 + hash(fsSeed * 13 + 77) % Math.floor(width * 0.65))
+      for (let dx = 1; dx <= 5; dx++) {
+        const sx = fsStreamX + dx
+        if (sx < 0 || sx >= width) continue
+        if (hash(sx * 53 + fsSeed + 22221) % 3 === 0)
+          buffer[groundStart + 1]![sx] = { char: "○", color: "#6a8050" }
+      }
+    }
+  }
+
   // Water crowfoot — white floating flowers on stream surface in summer; `○` on water
   if (season === "summer" && forest.trees.length >= 10 && !options.isRaining) {
     const wcSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -1228,6 +1243,20 @@ export function renderFrame(
     try {
       compositeSprite(buffer, getAnimalSprite(tree.visitor), tree.x + sideOffset, treeBaseY)
     } catch {}
+  }
+
+  // Squirrel drey — winter, tight leaf-ball nest high in oak/ash/beech; `●` near canopy top
+  if (season === "winter") {
+    const dreySpecies = new Set(["oak", "maple", "birch"])
+    for (const tree of forest.trees) {
+      if (!dreySpecies.has(tree.type) || tree.growth < 0.7) continue
+      if (hash(tree.id * 59 + 44447) % 5 !== 0) continue // ~20% of eligible trees
+      const dreyX = tree.x + 1
+      const dreyY = SKY_ROWS + 1 // high in canopy
+      if (dreyX >= width || dreyY >= groundStart) continue
+      if (buffer[dreyY]![dreyX]?.color) // only where canopy exists
+        buffer[dreyY]![dreyX] = { char: "●", color: "#5a4020" }
+    }
   }
 
   // Bracket fungi — shelf fungus growing on ancient tree trunks; autumn/winter; chestnut brown
@@ -2984,6 +3013,20 @@ export function renderFrame(
         if (hash(x * 61 + ta.id * 37 + 99991) % 4 !== 0) continue
         if (!buffer[groundStart]![x]?.color)
           buffer[groundStart]![x] = { char: "·", color: "#8a5028" }
+      }
+    }
+  }
+
+  // Oak mast — autumn bumper acorn crop; `◦` acorns on ground under oak trees
+  if (season === "autumn" && forest.trees.length >= 5) {
+    for (const tree of forest.trees) {
+      if (tree.type !== "oak" || tree.growth < 0.6) continue
+      for (let dx = -5; dx <= 5; dx++) {
+        const ax = tree.x + dx
+        if (ax < 0 || ax >= width) continue
+        if (hash(ax * 47 + tree.id * 23 + 99997) % 4 !== 0) continue
+        if (!buffer[groundStart]![ax]?.color)
+          buffer[groundStart]![ax] = { char: "◦", color: "#7a5820" }
       }
     }
   }

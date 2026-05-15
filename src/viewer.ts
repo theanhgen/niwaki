@@ -674,6 +674,25 @@ export async function viewer(): Promise<void> {
     }
   }, 75 * 1000)
 
+  // Hard frost: late autumn/early spring nights, rapid onset, fades by midday
+  setInterval(() => {
+    const h = new Date().getHours()
+    const m = new Date().getMonth()
+    const isFrostSeason = (m >= 9 && m <= 11) || (m >= 0 && m <= 3)
+    const isNightOrEarlyMorn = h >= 22 || h < 9
+    if (frostEvent) {
+      if (frostEvent.fadingOut || !isNightOrEarlyMorn || isRaining) {
+        frostEvent.intensity = Math.max(0, frostEvent.intensity - 0.08)
+        frostEvent.fadingOut = true
+        if (frostEvent.intensity <= 0) { frostEvent = null; return }
+      } else {
+        frostEvent.intensity = Math.min(1.0, frostEvent.intensity + 0.1)
+      }
+    } else if (isFrostSeason && isNightOrEarlyMorn && !isRaining && Math.random() < 0.003) {
+      frostEvent = { intensity: 0.1, seed: Math.floor(Math.random() * 99999), fadingOut: false }
+    }
+  }, 4 * 60 * 1000)
+
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn
   setInterval(() => {
     const h = new Date().getHours()

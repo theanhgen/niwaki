@@ -89,6 +89,7 @@ let beetles: { treePositions: { x: number; radius: number }[]; intensity: number
 let drought: { intensity: number; fadingOut: boolean } | null = null
 let blowdown: { seed: number; fallen: { x: number; dir: 1 | -1 }[]; until: number } | null = null
 let blight: { zones: number[]; intensity: number; seed: number; fadingOut: boolean } | null = null
+let frostEvent: { intensity: number; seed: number; fadingOut: boolean } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -126,6 +127,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     drought: drought ? { intensity: drought.intensity } : undefined,
     blowdown: blowdown ? { seed: blowdown.seed, fallen: blowdown.fallen } : undefined,
     blight: blight ? { zones: blight.zones, intensity: blight.intensity, seed: blight.seed } : undefined,
+    frost: frostEvent ? { intensity: frostEvent.intensity, seed: frostEvent.seed } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }

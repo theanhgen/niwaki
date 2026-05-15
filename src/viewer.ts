@@ -59,6 +59,8 @@ let rainEventCount = 0
 let fairyRingX: number | null = null
 let windStrength: 0 | 1 | 2 = 0
 let isLightning = false
+let comet: { x: number; y: number } | null = null
+let bearPrints: number[] | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -75,6 +77,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     windStrength,
     postRain: Date.now() < postRainUntil,
     isLightning,
+    comet: comet ?? undefined,
+    bearPrints: bearPrints ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -252,6 +256,46 @@ export async function viewer(): Promise<void> {
       if (!animating) renderForest(forest!, 0, activeMilestoneText)
     }, 140)
   }, 500)
+
+  // Comet: rare night event, 0.1% per 5s check, crosses at 1 col/5s
+  setInterval(() => {
+    const h = new Date().getHours()
+    const isNight = h >= 22 || h < 5
+    if (comet) {
+      comet.x += 1
+      const width = process.stdout.columns || 80
+      if (comet.x > width + 6) comet = null
+      if (!animating) renderForest(forest!, 0, activeMilestoneText)
+    } else if (isNight && Math.random() < 0.001) {
+      const width = process.stdout.columns || 80
+      comet = { x: 5, y: Math.floor(Math.random() * 3) }
+      const _ = width  // used above
+    }
+  }, 5000)
+
+  // Bear paw prints: winter only, trail appears one-by-one, fades after 8 min
+  function scheduleBearVisit(): void {
+    const delay = (15 + Math.random() * 25) * 60 * 1000
+    setTimeout(() => {
+      const m = new Date().getMonth()
+      const isWinter = m <= 1 || m === 11
+      if (isWinter && !bearPrints) {
+        const width = process.stdout.columns || 80
+        const startX = Math.floor(Math.random() * (width * 0.7))
+        const count = 4 + Math.floor(Math.random() * 4)
+        bearPrints = []
+        for (let i = 0; i < count; i++) {
+          setTimeout(() => {
+            if (bearPrints) bearPrints.push(startX + i * 3)
+            if (!animating) renderForest(forest!, 0, activeMilestoneText)
+          }, i * 3000)
+        }
+        setTimeout(() => { bearPrints = null }, 8 * 60 * 1000)
+      }
+      scheduleBearVisit()
+    }, delay)
+  }
+  scheduleBearVisit()
 
   // Wind tick: shift strength every 5–15 minutes
   function scheduleWindChange(): void {

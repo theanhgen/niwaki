@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[] } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -405,6 +405,21 @@ export function renderFrame(
     }
   }
 
+  // 2d. Comet — rare slow-moving sky object, head + dimming tail
+  if (options.comet) {
+    const { x: cx, y: cy } = options.comet
+    if (cy >= 0 && cy < SKY_ROWS) {
+      const tailColors = ["#ffffff", "#d8d8c0", "#a0a080", "#686860", "#404038"] as const
+      for (let i = 0; i < tailColors.length; i++) {
+        const tx = cx - i - 1
+        if (tx >= 0 && tx < width) {
+          buffer[cy]![tx] = { char: i === 0 ? "·" : i < 3 ? "." : " ", color: tailColors[i]! }
+        }
+      }
+      if (cx >= 0 && cx < width) buffer[cy]![cx] = { char: "*", color: "#ffffff" }
+    }
+  }
+
   // 3. Place stars (dimmed during day)
   for (const star of generateStars(width, biome, options.twinkleSeed ?? 0)) {
     let starColor = star.color
@@ -440,6 +455,15 @@ export function renderFrame(
     for (let x = 0; x < width; x++) {
       const snowChar = hash(x * 13 + 77) % 3 === 0 ? "░" : "█"
       buffer[groundStart]![x] = { char: snowChar, color: lerpColor(biome.ground[0]!, "#c8d0d8", 0.6) }
+    }
+  }
+
+  // Bear paw prints — winter only, appear as trail of `v` on ground
+  if (season === "winter" && options.bearPrints && options.bearPrints.length > 0) {
+    for (const px of options.bearPrints) {
+      if (px >= 0 && px < width) {
+        buffer[groundStart]![px] = { char: "v", color: "#7a6858" }
+      }
     }
   }
 
@@ -542,6 +566,21 @@ export function renderFrame(
         const h = hash(x * 43 + y * 89 + 5678)
         if (h % 22 !== 0) continue
         buffer[y]![x] = { char: "*", color: "#b0c8e8" }
+      }
+    }
+  }
+
+  // Canopy shadow dappling — ground darkens in patches under developed trees (day only)
+  if (period === "day" && !options.isRaining) {
+    for (const tree of forest.trees) {
+      if (tree.growth < 0.5) continue
+      const shadowRadius = Math.max(1, Math.floor(tree.growth * 3))
+      for (let dx = -shadowRadius; dx <= shadowRadius; dx++) {
+        const sx = tree.x + dx
+        if (sx < 0 || sx >= width) continue
+        const h = hash(sx * 37 + tree.id * 113 + 9999)
+        if (h % 3 !== 0) continue  // ~33% coverage = dappled, not solid
+        buffer[groundStart]![sx] = { char: "░", color: lerpColor(biome.ground[0]!, "#0a1808", 0.35) }
       }
     }
   }

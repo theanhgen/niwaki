@@ -3,7 +3,7 @@ import chalk from "chalk"
 import type { Forest, Grid, Sprite } from "./types.js"
 import { getSprite, getAnimalSprite, TREE_TYPES } from "./sprites.js"
 
-const SKY_ROWS = 4
+export const SKY_ROWS = 7
 const TREE_ROWS = 7
 const GROUND_ROWS = 2
 const SPACER_ROWS = 1

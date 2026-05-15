@@ -1,6 +1,6 @@
 import fs, { type FSWatcher } from "node:fs"
 
-import { renderFrame, getStreamBounds } from "./renderer.js"
+import { renderFrame, getStreamBounds, SKY_ROWS } from "./renderer.js"
 import { getForestFile, readForest, writeForest } from "./state.js"
 
 function writeAnsi(code: string): void {
@@ -179,12 +179,12 @@ export async function viewer(): Promise<void> {
     bats = bats.filter((b) => b.x >= -3)
     bats.forEach((b) => {
       b.x -= b.speed
-      if (Math.random() < 0.3) b.y = Math.max(0, Math.min(3, b.y + (Math.random() < 0.5 ? -1 : 1)))
+      if (Math.random() < 0.3) b.y = Math.max(0, Math.min(SKY_ROWS - 1, b.y + (Math.random() < 0.5 ? -1 : 1)))
     })
     // Advance shooting star trail diagonally (right 2, down 1)
     shootingStarTrail = shootingStarTrail
       .map((p) => ({ x: p.x + 2, y: p.y + 1 }))
-      .filter((p) => p.y < 4 && p.x < width)
+      .filter((p) => p.y < SKY_ROWS && p.x < width)
     // Stream fish swims 1 col per tick, clears when out of stream
     if (streamFish) {
       streamFish.x += streamFish.leftward ? -1 : 1
@@ -227,7 +227,7 @@ export async function viewer(): Promise<void> {
                   : season === "spring" ? 2 + Math.floor(Math.random() * 3)
                   : 1 + Math.floor(Math.random() * 3)
       const baseX = -count
-      const y = Math.floor(Math.random() * 3)
+      const y = Math.floor(Math.random() * (SKY_ROWS - 1))
       const speed = season === "autumn" ? 2 + Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 2)
       for (let i = 0; i < count; i++) birds.push({ x: baseX + i, y, speed })
       scheduleBirdSpawn()
@@ -367,7 +367,7 @@ export async function viewer(): Promise<void> {
         const width = process.stdout.columns || 80
         const count = 2 + Math.floor(Math.random() * 3)
         for (let i = 0; i < count; i++) {
-          bats.push({ x: width + 2 + i * 2, y: 1 + Math.floor(Math.random() * 2), speed: 1 + Math.floor(Math.random() * 2) })
+          bats.push({ x: width + 2 + i * 2, y: 1 + Math.floor(Math.random() * (SKY_ROWS - 2)), speed: 1 + Math.floor(Math.random() * 2) })
         }
       }
       scheduleBatSpawn()
@@ -563,7 +563,7 @@ export async function viewer(): Promise<void> {
       if (!animating) renderForest(forest!, 0, activeMilestoneText)
     } else if (isNight && Math.random() < 0.001) {
       const width = process.stdout.columns || 80
-      comet = { x: 5, y: Math.floor(Math.random() * 3) }
+      comet = { x: 5, y: Math.floor(Math.random() * (SKY_ROWS - 2)) }
       const _ = width  // used above
     }
   }, 5000)

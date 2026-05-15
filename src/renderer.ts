@@ -106,35 +106,35 @@ const BIOMES: Biome[] = [
     ground: ["#2a3a28", "#1e2d1c"],
     starGlyphs: ["·", ".", " ", " "],
     starDensity: 12,
-    starColors: ["#3a3a3a", "#444444"],
+    starColors: ["#6a7888", "#7a8898"],
     label: "clearing",
   },
   {
     ground: ["#22492d", "#18361f"],
     starGlyphs: ["·", "·", "✦", "."],
     starDensity: 9,
-    starColors: ["#444444", "#5d5d5d"],
+    starColors: ["#7888a8", "#8898b8", "#9098b0"],
     label: "grove",
   },
   {
     ground: ["#1e4a28", "#163a1e"],
     starGlyphs: ["·", "✦", "✧", "·", "."],
     starDensity: 7,
-    starColors: ["#4d4d4d", "#5d5d5d", "#6a6a55"],
+    starColors: ["#8898b0", "#a0b0c8", "#b0b8c8", "#a8a090"],
     label: "woodland",
   },
   {
     ground: ["#1a5230", "#124020"],
     starGlyphs: ["✦", "✧", "·", "·", "✦", "."],
     starDensity: 6,
-    starColors: ["#5d5d5d", "#6d6d5a", "#7a7a60"],
+    starColors: ["#98a8c0", "#b8c8d8", "#c8d0e0", "#c0b898"],
     label: "old growth",
   },
   {
     ground: ["#165a32", "#0e4822"],
     starGlyphs: ["✦", "✧", "·", "✦", "⋆", "."],
     starDensity: 5,
-    starColors: ["#6d6d5a", "#7a7a60", "#8a8a6a"],
+    starColors: ["#a0b0c8", "#c0d0e0", "#d8e4f4", "#e8eeff", "#d8d0b8"],
     label: "ancient forest",
   },
 ]
@@ -269,16 +269,16 @@ function getSkyColor(row: number, period: TimePeriod, blend: number): string {
     return lerpColor("#06080f", "#0d1220", t)
   }
   if (period === "day") {
-    return lerpColor("#1a3a6a", "#2a4a7a", t)
+    return lerpColor("#2a6ab0", "#5898d0", t)
   }
   if (period === "dawn") {
-    const zenith = lerpColor("#06080f", "#1a0a2e", blend)
-    const horizon = lerpColor("#0d1220", "#7a3020", blend)
+    const zenith = lerpColor("#06080f", "#1a1060", blend)
+    const horizon = lerpColor("#0d1220", "#904820", blend)
     return lerpColor(zenith, horizon, t)
   }
   // dusk
-  const zenith = lerpColor("#1a3a6a", "#2a0a3a", blend)
-  const horizon = lerpColor("#2a4a7a", "#6a1a10", blend)
+  const zenith = lerpColor("#2a6ab0", "#2a0a3a", blend)
+  const horizon = lerpColor("#5898d0", "#8a2810", blend)
   return lerpColor(zenith, horizon, t)
 }
 
@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -461,11 +461,15 @@ export function renderFrame(
     }
   }
 
-  // 3. Place stars (dimmed during day)
+  // 3. Place stars — fade with sunrise/sunset, invisible during day
   for (const star of generateStars(width, biome, options.twinkleSeed ?? 0)) {
     let starColor = star.color
     if (period === "day") {
-      starColor = lerpColor(starColor, getSkyColor(star.y, period, blend), 0.7)
+      starColor = lerpColor(starColor, getSkyColor(star.y, "day", 0), 0.97)
+    } else if (period === "dawn") {
+      starColor = lerpColor(starColor, getSkyColor(star.y, period, blend), blend * 0.92)
+    } else if (period === "dusk") {
+      starColor = lerpColor(starColor, getSkyColor(star.y, period, blend), (1 - blend) * 0.92)
     }
     buffer[star.y]![star.x] = { char: star.char, color: starColor }
   }
@@ -542,10 +546,21 @@ export function renderFrame(
     }
   }
 
-  // 6. Composite trees
+  // 6. Composite trees — full-stage trees get a stable per-tree height bonus for natural variation
   const treeBaseY = groundStart - 1
   for (const tree of forest.trees) {
-    compositeSprite(buffer, getSprite(tree.type, tree.growth, tree.id % 3), tree.x, treeBaseY)
+    const heightBonus = tree.growth >= 0.8 ? hash(tree.id * 13 + 99991) % 3 : 0
+    const effectiveBaseY = treeBaseY - heightBonus
+    compositeSprite(buffer, getSprite(tree.type, tree.growth, tree.id % 3), tree.x, effectiveBaseY)
+    // Draw trunk extension to bridge any gap to the ground
+    if (heightBonus > 0) {
+      for (let ei = 0; ei < heightBonus; ei++) {
+        const extY = treeBaseY - ei
+        if (extY < buffer.length && !buffer[extY]![tree.x]?.color) {
+          buffer[extY]![tree.x] = { char: "█", color: "#7a5a30" }
+        }
+      }
+    }
   }
 
   // 6b. Composite animal visitors
@@ -682,6 +697,14 @@ export function renderFrame(
           buffer[ff.y]![ff.x] = { char: "·", color: "#b8f040" }
         }
       }
+    }
+  }
+
+  // Butterfly — spring/summer days, flutters through the understory
+  if (options.butterfly) {
+    const { x: bx, y: by, color: bcol } = options.butterfly
+    if (by >= SKY_ROWS + 1 && by < SKY_ROWS + TREE_ROWS && bx >= 1 && bx < width - 1) {
+      if (!buffer[by]![bx]?.color) buffer[by]![bx] = { char: "~", color: bcol }
     }
   }
 

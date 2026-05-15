@@ -81,6 +81,7 @@ let weasel: { x: number; y: number; speed: number } | null = null
 let frog: { x: number } | null = null
 let fireflies: { x: number; y: number; lit: boolean; blinkTimer: number }[] = []
 let owl: { x: number; y: number } | null = null
+let butterfly: { x: number; y: number; color: string; dx: number; dy: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -110,6 +111,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     frog: frog ?? undefined,
     fireflies: fireflies.length > 0 ? fireflies : undefined,
     owl: owl ?? undefined,
+    butterfly: butterfly ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -487,6 +489,28 @@ export async function viewer(): Promise<void> {
   }
   scheduleOwlVisit()
 
+  // Butterfly: spring/summer days, every 8-18 min, flutters for 3-8 min
+  function scheduleButterflySpawn(): void {
+    const delay = (8 + Math.random() * 10) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const m = new Date().getMonth()
+      const isSpringOrSummer = m >= 2 && m <= 8
+      const isDay = h >= 8 && h < 19
+      if (isSpringOrSummer && isDay && !butterfly) {
+        const width = process.stdout.columns || 80
+        const springColors = ["#70c0e8", "#f0e060", "#f0b0e0"]
+        const summerColors = ["#f08020", "#f04090", "#50e050", "#f0e060"]
+        const palette = (m >= 5 && m <= 7) ? summerColors : springColors
+        const color = palette[Math.floor(Math.random() * palette.length)]!
+        butterfly = { x: Math.floor(Math.random() * width), y: 6 + Math.floor(Math.random() * 3), color, dx: Math.random() < 0.5 ? -1 : 1, dy: 0 }
+        setTimeout(() => { butterfly = null }, (3 + Math.random() * 5) * 60 * 1000)
+      }
+      scheduleButterflySpawn()
+    }, delay)
+  }
+  scheduleButterflySpawn()
+
   // Lightning + dragonfly dart: 500ms tick
   setInterval(() => {
     if (isRaining && !animating && Math.random() < 0.03) {
@@ -498,6 +522,18 @@ export async function viewer(): Promise<void> {
       }, 140)
     }
     if (woodpecker) woodpecker.peck = !woodpecker.peck
+    // Butterfly — erratic flutter with gentle random walk
+    if (butterfly) {
+      const width = process.stdout.columns || 80
+      if (butterfly.x < 0 || butterfly.x >= width || butterfly.y < 5 || butterfly.y > 10) {
+        butterfly = null
+      } else {
+        butterfly.x = Math.max(1, Math.min(width - 2, butterfly.x + butterfly.dx + (Math.random() < 0.4 ? (Math.random() < 0.5 ? -1 : 1) : 0)))
+        butterfly.y = Math.max(5, Math.min(10, butterfly.y + butterfly.dy + (Math.random() < 0.3 ? (Math.random() < 0.5 ? -1 : 1) : 0)))
+        if (Math.random() < 0.25) butterfly.dx = Math.random() < 0.5 ? -1 : 1
+        if (Math.random() < 0.15) butterfly.dy = Math.random() < 0.5 ? -1 : 1
+      }
+    }
     // Firefly blink — each firefly toggles independently
     for (const ff of fireflies) {
       ff.blinkTimer -= 1

@@ -126,6 +126,7 @@ let wren: { x: number; speed: number; pauseTimer: number } | null = null
 let pineMarten: { x: number; y: number; speed: number } | null = null
 let pheasant: { x: number; speed: number; flushed: boolean } | null = null
 let sparrowhawk: { xf: number; speed: number; y: number } | null = null
+let titFlock: { x: number; y: number; speed: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -200,6 +201,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     pineMarten: pineMarten ? { x: pineMarten.x, y: pineMarten.y } : undefined,
     pheasant: pheasant ? { x: pheasant.x, flushed: pheasant.flushed } : undefined,
     sparrowhawk: sparrowhawk ? { x: Math.floor(sparrowhawk.xf), y: sparrowhawk.y, leftward: sparrowhawk.speed < 0 } : undefined,
+    titFlock: titFlock.length > 0 ? titFlock.map(t => ({ x: t.x, y: t.y })) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -418,6 +420,12 @@ export async function viewer(): Promise<void> {
       if (moth.y < SKY_ROWS + 1) moth.dy = Math.abs(moth.dy) * 0.5
       if (moth.y > SKY_ROWS + 5) moth.dy = -Math.abs(moth.dy) * 0.5
     }
+    // Long-tailed tit flock — winter, small cluster drifting through bare canopy
+    for (const tit of titFlock) {
+      tit.x += tit.speed
+      tit.y = Math.max(SKY_ROWS, Math.min(SKY_ROWS + 3, tit.y + (Math.random() < 0.3 ? (Math.random() < 0.5 ? 1 : -1) : 0)))
+    }
+    titFlock = titFlock.filter(t => t.x > -4 && t.x < (process.stdout.columns || 80) + 4)
     // Aurora — phase drift for curtain animation
     if (aurora) aurora.phase += 0.15
     // Sparrowhawk — explosive fast dash through tree canopy level
@@ -1498,6 +1506,27 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   schedulePheasantSpawn()
+
+  // Long-tailed tit flock — winter, boisterous family group drifts through bare canopy
+  setInterval(() => {
+    const h = new Date().getHours()
+    const m = new Date().getMonth()
+    const isWinter = m >= 10 || m <= 2
+    const isDay = h >= 8 && h < 17
+    if (!isWinter || !isDay || titFlock.length > 0 || (forest?.trees.length ?? 0) < 5) return
+    if (Math.random() > 0.15) return
+    const width = process.stdout.columns || 80
+    const count = 6 + Math.floor(Math.random() * 8)
+    const goLeft = Math.random() < 0.5
+    for (let i = 0; i < count; i++) {
+      titFlock.push({
+        x: goLeft ? width + 2 + i * 3 : -2 - i * 3,
+        y: SKY_ROWS + Math.floor(Math.random() * 3),
+        speed: goLeft ? -1 : 1
+      })
+    }
+    setTimeout(() => { titFlock = [] }, (3 + Math.random() * 5) * 60 * 1000)
+  }, 20 * 60 * 1000)
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

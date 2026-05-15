@@ -393,7 +393,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[]; snail?: { x: number }; caterpillar?: { segments: number[]; dir: 1 | -1 }; otter?: { x: number; diving: boolean }; berries?: { x: number; color: string }[]; mossPatch?: boolean; seedDrift?: { x: number; y: number; char: string }[]; badger?: { x: number }; kingfisher?: { x: number; diving: boolean }; boar?: { x: number; rooting: boolean }; dawnChorus?: { x: number; y: number; life: number }[]; beetle?: { x: number }; puddles?: number[]; groundFog?: boolean; moth?: { x: number; y: number; color: string }; migration?: { x: number; y: number; size: number }; raccoon?: { x: number; washing: boolean }; moleHills?: number[]; murmuration?: { x: number; y: number; seed: number }; mayflyHatch?: boolean; vole?: { x: number }; kestrel?: { x: number; y: number }; hedgehog?: { x: number; rolled: boolean }; salamander?: { x: number }; jay?: { x: number; carrying: boolean; leftward: boolean }; aurora?: { intensity: number; phase: number }; buzzard?: { x: number; y: number }; wren?: { x: number }; pineMarten?: { x: number; y: number }; pheasant?: { x: number; flushed: boolean }; sparrowhawk?: { x: number; y: number; leftward: boolean }; titFlock?: { x: number; y: number }[]; goldfinch?: { x: number; paused: boolean }; barnOwl?: { x: number; y: number }; slug?: { x: number }; snake?: { x: number; basking: boolean }; toadMigration?: { x: number }[] } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[]; snail?: { x: number }; caterpillar?: { segments: number[]; dir: 1 | -1 }; otter?: { x: number; diving: boolean }; berries?: { x: number; color: string }[]; mossPatch?: boolean; seedDrift?: { x: number; y: number; char: string }[]; badger?: { x: number }; kingfisher?: { x: number; diving: boolean }; boar?: { x: number; rooting: boolean }; dawnChorus?: { x: number; y: number; life: number }[]; beetle?: { x: number }; puddles?: number[]; groundFog?: boolean; moth?: { x: number; y: number; color: string }; migration?: { x: number; y: number; size: number }; raccoon?: { x: number; washing: boolean }; moleHills?: number[]; murmuration?: { x: number; y: number; seed: number }; mayflyHatch?: boolean; vole?: { x: number }; kestrel?: { x: number; y: number }; hedgehog?: { x: number; rolled: boolean }; salamander?: { x: number }; jay?: { x: number; carrying: boolean; leftward: boolean }; aurora?: { intensity: number; phase: number }; buzzard?: { x: number; y: number }; wren?: { x: number }; pineMarten?: { x: number; y: number }; pheasant?: { x: number; flushed: boolean }; sparrowhawk?: { x: number; y: number; leftward: boolean }; titFlock?: { x: number; y: number }[]; goldfinch?: { x: number; paused: boolean }; barnOwl?: { x: number; y: number }; slug?: { x: number }; snake?: { x: number; basking: boolean }; toadMigration?: { x: number }[]; hare?: { x: number; frozen: boolean; leftward: boolean }; raven?: { x: number; y: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -661,6 +661,23 @@ export function renderFrame(
         if (ex >= width) continue
         if (!buffer[undergrowthY]![ex]?.color)
           buffer[undergrowthY]![ex] = { char: "✤", color: "#f0f0e0" } // cream-white
+      }
+    }
+  }
+
+  // Wood anemone — pale star flowers carpet shaded woodland floor in early spring under canopy
+  if (season === "spring" && forest.trees.length >= 5) {
+    const m = now.getMonth()
+    if (m >= 2 && m <= 4) { // March-May
+      for (const tree of forest.trees) {
+        if (tree.growth < 0.5 || tree.type === "stump") continue
+        for (let dx = -4; dx <= 4; dx++) {
+          const ax = tree.x + dx
+          if (ax < 0 || ax >= width) continue
+          if (hash(ax * 17 + tree.id * 31 + 12345) % 5 !== 0) continue
+          if (!buffer[undergrowthY]![ax]?.color)
+            buffer[undergrowthY]![ax] = { char: "✦", color: "#eeece0" }
+        }
       }
     }
   }
@@ -1424,6 +1441,16 @@ export function renderFrame(
     buffer[options.buzzard.y]![options.buzzard.x] = { char: "W", color: "#6a5030" }
   }
 
+  // Raven — largest corvid; soars high in winter sky; \V/ wingspan, glossy blue-black
+  if (options.raven && options.raven.x >= 1 && options.raven.x < width - 1) {
+    const { x: rx, y: ry } = options.raven
+    if (ry >= 0 && ry < SKY_ROWS) {
+      buffer[ry]![rx] = { char: "V", color: "#1a1828" }
+      buffer[ry]![rx - 1] = { char: "\\", color: "#1a1828" }
+      buffer[ry]![rx + 1] = { char: "/", color: "#1a1828" }
+    }
+  }
+
   // Sparrowhawk — explosive low dash through tree canopy; barred wings ≈ blur
   if (options.sparrowhawk && options.sparrowhawk.x >= 0 && options.sparrowhawk.x < width) {
     const { x: shx, y: shy, leftward: shl } = options.sparrowhawk
@@ -1560,6 +1587,15 @@ export function renderFrame(
     if (rabbit.x >= 1 && rabbit.x < width) {
       buffer[ry]![rabbit.x] = { char: ">", color: "#b8aa90" }
       buffer[ry]![rabbit.x - 1] = { char: "·", color: "#a09880" }
+    }
+  }
+
+  // Hare — long-legged, sits bolt upright when alarmed; bolts at speed; winter coat paler
+  if (options.hare) {
+    const { x: hx, frozen, leftward } = options.hare
+    if (hx >= 0 && hx < width) {
+      const hareColor = season === "winter" ? "#c0b898" : "#c8902a"
+      buffer[undergrowthY]![hx] = { char: frozen ? "ı" : (leftward ? "≺" : "≻"), color: hareColor }
     }
   }
 

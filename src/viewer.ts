@@ -132,6 +132,8 @@ let barnOwl: { xf: number; y: number; speed: number; until: number } | null = nu
 let slug: { xf: number; tickCount: number } | null = null
 let snake: { x: number; speed: number; basking: boolean; baskTimer: number } | null = null
 let toadMigration: { toads: { x: number }[]; speed: number } | null = null
+let hare: { x: number; speed: number; frozen: boolean; frozenTimer: number } | null = null
+let raven: { xf: number; y: number; speed: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -212,6 +214,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     slug: slug ? { x: Math.floor(slug.xf) } : undefined,
     snake: snake ? { x: snake.x, basking: snake.basking } : undefined,
     toadMigration: toadMigration ? toadMigration.toads : undefined,
+    hare: hare ? { x: hare.x, frozen: hare.frozen, leftward: hare.speed < 0 } : undefined,
+    raven: raven ? { x: Math.floor(raven.xf), y: raven.y } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -468,6 +472,12 @@ export async function viewer(): Promise<void> {
       const cx = w * 0.5; const r = w * 0.25
       buzzard.xf = cx + Math.cos(buzzard.angle) * r
       buzzard.y = Math.max(0, Math.min(SKY_ROWS - 2, 1 + Math.floor(Math.sin(buzzard.angle * 0.5) * 1.2)))
+    }
+    // Raven — slow soaring pass across high sky in winter
+    if (raven) {
+      raven.xf += raven.speed
+      const w = process.stdout.columns || 80
+      if (raven.xf > w + 8 || raven.xf < -8) raven = null
     }
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
@@ -781,6 +791,21 @@ export async function viewer(): Promise<void> {
         if (pheasant.flushed) setTimeout(() => { pheasant = null }, 2000)
         else pheasant = null
       }
+    }
+    // Hare — sits frozen in open ground, then bolts; sprint speed doubles near predators
+    if (hare) {
+      const w = process.stdout.columns || 80
+      if (hare.frozen) {
+        hare.frozenTimer--
+        if (hare.frozenTimer <= 0) hare.frozen = false
+      } else {
+        if (Math.random() < 0.04) { hare.frozen = true; hare.frozenTimer = 2 + Math.floor(Math.random() * 4) }
+        else {
+          if (foxes.some(f => Math.abs(f.x - hare!.x) < 10)) hare.speed = hare.speed > 0 ? 4 : -4
+          hare.x += hare.speed
+        }
+      }
+      if (hare.x > w + 4 || hare.x < -4) hare = null
     }
   }, 400)
 
@@ -1710,6 +1735,40 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleMayflyHatch()
+
+  // Hare — sits frozen in open, bolts when spooked; crepuscular, year-round
+  function scheduleHareSpawn(): void {
+    const delay = (15 + Math.random() * 25) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isCrepuscular = (h >= 5 && h < 9) || (h >= 16 && h < 21)
+      if (!hare && isCrepuscular && (forest?.trees.length ?? 0) >= 3 && Math.random() < 0.6) {
+        const width = process.stdout.columns || 80
+        const startX = Math.floor(width * 0.15 + Math.random() * width * 0.7)
+        const goLeft = Math.random() < 0.5
+        hare = { x: startX, speed: goLeft ? -2 : 2, frozen: true, frozenTimer: 10 + Math.floor(Math.random() * 15) }
+      }
+      scheduleHareSpawn()
+    }, delay)
+  }
+  scheduleHareSpawn()
+
+  // Raven — large corvid, slow soaring pass in autumn/winter/early spring sky
+  function scheduleRavenSpawn(): void {
+    const delay = (40 + Math.random() * 80) * 60 * 1000
+    setTimeout(() => {
+      const now = new Date()
+      const m = now.getMonth()
+      const h = now.getHours()
+      if (!raven && (m <= 3 || m >= 9) && h >= 7 && h < 18 && (forest?.trees.length ?? 0) >= 5 && Math.random() < 0.5) {
+        const width = process.stdout.columns || 80
+        const fromLeft = Math.random() < 0.5
+        raven = { xf: fromLeft ? -3 : width + 3, y: 1 + Math.floor(Math.random() * 3), speed: fromLeft ? 0.5 : -0.5 }
+      }
+      scheduleRavenSpawn()
+    }, delay)
+  }
+  scheduleRavenSpawn()
 
   // Ground fog: cool mornings in spring/autumn, check every 5 min
   setInterval(() => {

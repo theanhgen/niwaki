@@ -131,6 +131,7 @@ let goldfinch: { x: number; speed: number; pauseTimer: number } | null = null
 let barnOwl: { xf: number; y: number; speed: number; until: number } | null = null
 let slug: { xf: number; tickCount: number } | null = null
 let snake: { x: number; speed: number; basking: boolean; baskTimer: number } | null = null
+let toadMigration: { toads: { x: number }[]; speed: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -210,6 +211,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     barnOwl: barnOwl ? { x: Math.floor(barnOwl.xf), y: barnOwl.y } : undefined,
     slug: slug ? { x: Math.floor(slug.xf) } : undefined,
     snake: snake ? { x: snake.x, basking: snake.basking } : undefined,
+    toadMigration: toadMigration ? toadMigration.toads : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -702,6 +704,13 @@ export async function viewer(): Promise<void> {
         if (threatened && Math.random() < 0.4) { hedgehog.rolled = true; hedgehog.rollTimer = 8 + Math.floor(Math.random() * 10) }
         else hedgehog.x += hedgehog.speed
       }
+    }
+    // Toad migration — spring evening, mass crossing movement
+    if (toadMigration) {
+      const w = process.stdout.columns || 80
+      toadMigration.toads.forEach(t => { t.x += toadMigration!.speed })
+      toadMigration.toads = toadMigration.toads.filter(t => t.x >= -2 && t.x <= w + 2)
+      if (toadMigration.toads.length === 0) toadMigration = null
     }
     // Adder/grass snake — basks in sun, slowly moves when disturbed
     if (snake) {
@@ -1637,6 +1646,21 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleSnakeSpawn()
+
+  // Toad migration — mass crossing in early spring evenings (Feb-March)
+  setInterval(() => {
+    const h = new Date().getHours()
+    const m = new Date().getMonth()
+    const isMigrationSeason = m === 1 || m === 2 // Feb-March
+    const isEvening = h >= 19 && h < 23
+    if (!isMigrationSeason || !isEvening || toadMigration || (forest?.trees.length ?? 0) < 5) return
+    if (Math.random() > 0.2) return
+    const width = process.stdout.columns || 80
+    const count = 10 + Math.floor(Math.random() * 15)
+    const toads = Array.from({ length: count }, () => ({ x: -2 - Math.floor(Math.random() * 15) }))
+    toadMigration = { toads, speed: 1 }
+    setTimeout(() => { toadMigration = null }, (8 + Math.random() * 10) * 60 * 1000)
+  }, 30 * 60 * 1000)
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

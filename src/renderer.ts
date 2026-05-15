@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1179,6 +1179,34 @@ export function renderFrame(
         }
         // Ash-covered ground
         buffer[groundStart]![cx] = { char: h % 4 === 0 ? "░" : "█", color: "#2e2218" }
+      }
+    }
+  }
+
+  // 8g. Bark beetle infestation — dead crown dieback, gallery bore marks
+  if (options.beetles && options.beetles.zones.length > 0) {
+    const { zones, intensity } = options.beetles
+    for (const { x: zx, radius: zr } of zones) {
+      for (let cx = zx - zr; cx <= zx + zr; cx++) {
+        if (cx < 0 || cx >= width) continue
+        // Dead crown: upper canopy rows tinted to dry grey-brown
+        const crownDepth = Math.ceil(TREE_ROWS * 0.45)
+        for (let y = SKY_ROWS; y < SKY_ROWS + crownDepth; y++) {
+          const cell = buffer[y]![cx]
+          if (!cell?.color) continue
+          const relDepth = (y - SKY_ROWS) / crownDepth
+          const tint = intensity * (1 - relDepth * 0.4)
+          buffer[y]![cx] = { char: cell.char, color: lerpColor(cell.color, "#7a5a28", Math.min(0.9, tint * 0.85)) }
+        }
+        // Bore gallery marks on mid-trunk at higher intensity
+        if (intensity > 0.45) {
+          const midY = SKY_ROWS + Math.floor(TREE_ROWS * 0.55)
+          const h = hash(cx * 41 + 99997)
+          if (h % 3 === 0) {
+            const cell = buffer[midY]![cx]
+            if (cell?.color) buffer[midY]![cx] = { char: "·", color: lerpColor("#7a5a28", "#3a2810", intensity) }
+          }
+        }
       }
     }
   }

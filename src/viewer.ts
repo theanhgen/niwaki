@@ -85,6 +85,7 @@ let butterfly: { x: number; y: number; color: string; dx: number; dy: number } |
 let clouds: { xf: number; y: number; width: number; density: 0|1|2 }[] = []
 let crows: { x: number; speed: number; pecking: boolean; peckTimer: number }[] = []
 let wildfire: { x: number; width: number; stage: string; until: number } | null = null
+let beetles: { treePositions: { x: number; radius: number }[]; intensity: number; peakReached: boolean } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -118,6 +119,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     clouds: clouds.length > 0 ? clouds.map(c => ({ x: Math.floor(c.xf), y: c.y, width: c.width, density: c.density })) : undefined,
     crows: crows.length > 0 ? crows.map(c => ({ x: c.x, pecking: c.pecking })) : undefined,
     wildfire: wildfire ? { x: wildfire.x, width: wildfire.width, stage: wildfire.stage, seed: twinkleSeed } : undefined,
+    beetles: beetles ? { zones: beetles.treePositions, intensity: beetles.intensity } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -555,6 +557,39 @@ export async function viewer(): Promise<void> {
       }
     }
   }, 30 * 1000)
+
+  // Bark beetle infestation: warm season, ≥10 trees, spreads from 1-2 infected trees outward
+  setInterval(() => {
+    const m = new Date().getMonth()
+    const isWarmSeason = m >= 3 && m <= 9
+    const trees = (forest?.trees ?? []).filter(t => t.type !== "stump" && t.growth > 0.5)
+    if (beetles) {
+      if (!beetles.peakReached) {
+        beetles.intensity = Math.min(1.0, beetles.intensity + 0.025)
+        // Spread to nearest unclaimed neighbor tree
+        if (beetles.intensity > 0.4 && beetles.treePositions.length < 6 && Math.random() < 0.35) {
+          const candidate = trees
+            .filter(t => !beetles!.treePositions.some(p => Math.abs(p.x - t.x) < 4))
+            .sort((a, b) => {
+              const dA = Math.min(...beetles!.treePositions.map(p => Math.abs(p.x - a.x)))
+              const dB = Math.min(...beetles!.treePositions.map(p => Math.abs(p.x - b.x)))
+              return dA - dB
+            })[0]
+          if (candidate) {
+            const nearDist = Math.min(...beetles!.treePositions.map(p => Math.abs(p.x - candidate.x)))
+            if (nearDist < 22) beetles.treePositions.push({ x: candidate.x, radius: 5 })
+          }
+        }
+        if (beetles.intensity >= 1.0) {
+          beetles.peakReached = true
+          setTimeout(() => { beetles = null }, (12 + Math.random() * 18) * 60 * 1000)
+        }
+      }
+    } else if (isWarmSeason && !wildfire && trees.length >= 10 && Math.random() < 0.0007) {
+      const seed = trees[Math.floor(Math.random() * trees.length)]!
+      beetles = { treePositions: [{ x: seed.x, radius: 5 }], intensity: 0.1, peakReached: false }
+    }
+  }, 60 * 1000)
 
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn
   setInterval(() => {

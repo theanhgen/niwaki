@@ -114,6 +114,8 @@ let migration: { xf: number; y: number; size: number; speed: number } | null = n
 let raccoon: { x: number; speed: number; washing: boolean; washTimer: number } | null = null
 let moleHills: { x: number; until: number }[] = []
 let murmuration: { x: number; y: number; dx: number; seed: number; until: number } | null = null
+let mayflyHatch: { until: number } | null = null
+let vole: { x: number; speed: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -176,6 +178,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     raccoon: raccoon ? { x: raccoon.x, washing: raccoon.washing } : undefined,
     moleHills: moleHills.length > 0 ? moleHills.map(m => m.x) : undefined,
     murmuration: murmuration ? { x: murmuration.x, y: murmuration.y, seed: murmuration.seed } : undefined,
+    mayflyHatch: mayflyHatch ? true : undefined,
+    vole: vole ? { x: vole.x } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -377,6 +381,13 @@ export async function viewer(): Promise<void> {
       murmuration.seed += 1
       if (Date.now() > murmuration.until || murmuration.x > width + 20 || murmuration.x < -20) murmuration = null
     }
+    // Vole — tiny fast prey animal scurrying across ground
+    if (vole) {
+      vole.x += vole.speed
+      if (vole.x > width + 3) vole = null
+    }
+    // Mayfly hatch — expire when time is up
+    if (mayflyHatch && Date.now() > mayflyHatch.until) mayflyHatch = null
     // Moth — erratic dusk-to-dawn drifter through canopy rows
     if (moth) {
       moth.x += moth.dx + (Math.random() - 0.5) * 0.8
@@ -1237,6 +1248,32 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleMurmuration()
+
+  // Vole — tiny fast ground mammal, spawns every 3-8 min year-round
+  function scheduleVoleSpawn(): void {
+    const delay = (3 + Math.random() * 5) * 60 * 1000
+    setTimeout(() => {
+      if (!vole && (forest?.trees.length ?? 0) >= 2) {
+        vole = { x: -1, speed: 3 + Math.floor(Math.random() * 3) }
+      }
+      scheduleVoleSpawn()
+    }, delay)
+  }
+  scheduleVoleSpawn()
+
+  // Mayfly hatch — spring/early summer, 3-5 hour intervals, lasts 20-40 min
+  function scheduleMayflyHatch(): void {
+    const delay = (180 + Math.random() * 120) * 60 * 1000
+    setTimeout(() => {
+      const m = new Date().getMonth()
+      const isMayflySeason = m >= 3 && m <= 5  // April-June
+      if (isMayflySeason && !mayflyHatch && (forest?.trees.length ?? 0) >= 10) {
+        mayflyHatch = { until: Date.now() + (20 + Math.random() * 20) * 60 * 1000 }
+      }
+      scheduleMayflyHatch()
+    }, delay)
+  }
+  scheduleMayflyHatch()
 
   // Ground fog: cool mornings in spring/autumn, check every 5 min
   setInterval(() => {

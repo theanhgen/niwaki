@@ -393,7 +393,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[]; snail?: { x: number }; caterpillar?: { segments: number[]; dir: 1 | -1 }; otter?: { x: number; diving: boolean }; berries?: { x: number; color: string }[]; mossPatch?: boolean; seedDrift?: { x: number; y: number; char: string }[]; badger?: { x: number }; kingfisher?: { x: number; diving: boolean }; boar?: { x: number; rooting: boolean }; dawnChorus?: { x: number; y: number; life: number }[]; beetle?: { x: number }; puddles?: number[]; groundFog?: boolean; moth?: { x: number; y: number; color: string }; migration?: { x: number; y: number; size: number }; raccoon?: { x: number; washing: boolean }; moleHills?: number[] } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[]; snail?: { x: number }; caterpillar?: { segments: number[]; dir: 1 | -1 }; otter?: { x: number; diving: boolean }; berries?: { x: number; color: string }[]; mossPatch?: boolean; seedDrift?: { x: number; y: number; char: string }[]; badger?: { x: number }; kingfisher?: { x: number; diving: boolean }; boar?: { x: number; rooting: boolean }; dawnChorus?: { x: number; y: number; life: number }[]; beetle?: { x: number }; puddles?: number[]; groundFog?: boolean; moth?: { x: number; y: number; color: string }; migration?: { x: number; y: number; size: number }; raccoon?: { x: number; washing: boolean }; moleHills?: number[]; murmuration?: { x: number; y: number; seed: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -837,6 +837,19 @@ export function renderFrame(
     }
   }
 
+  // 7. Starling murmuration — autumn/winter dusk, undulating blob in sky
+  if (options.murmuration) {
+    const { x: mx, y: my, seed: ms } = options.murmuration
+    const murCount = 18 + Math.floor(width * 0.15)
+    for (let i = 0; i < murCount; i++) {
+      const angle = (i / murCount) * Math.PI * 2 + ms * 0.08
+      const rx = Math.floor(mx + Math.cos(angle) * (6 + hash(i * 7 + ms + 11113) % 8) + (hash(i * 11 + ms * 3 + 22221) % 5) - 2)
+      const ry = Math.floor(my + Math.sin(angle) * 2 + (hash(i * 13 + ms + 33331) % 3) - 1)
+      if (rx >= 0 && rx < width && ry >= 0 && ry < SKY_ROWS - 1)
+        buffer[ry]![rx] = { char: "·", color: "#2a3040" }
+    }
+  }
+
   // 7e. Bats — dusk/night, fly right-to-left with erratic altitude
   if (period === "night" || period === "dusk") {
     for (const bat of options.bats ?? []) {
@@ -1185,6 +1198,20 @@ export function renderFrame(
       const h = hash(x * 97 + forest.trees.length * 31 + 55555)
       if (h % 7 !== 0) continue
       buffer[undergrowthY]![x] = { char: h % 4 === 0 ? "*" : "·", color: palette[h % palette.length]! }
+    }
+  }
+
+  // Bee cluster — pollinators hovering above flowering patches, spring/summer
+  if ((season === "spring" || season === "summer") && forest.trees.length >= 5 && !options.isRaining) {
+    const seedB = options.twinkleSeed ?? 0
+    const beeCount = 2 + hash(seedB * 11 + 33331) % 3
+    for (let i = 0; i < beeCount; i++) {
+      const h = hash(i * 31 + seedB * 17 + 77773)
+      const bx = (h % (width - 4)) + 2
+      const by = groundStart - 2 - (h % 2)
+      if (by < SKY_ROWS || by >= groundStart) continue
+      if (!buffer[by]![bx]?.color)
+        buffer[by]![bx] = { char: "·", color: "#d8a820" }
     }
   }
 
@@ -1550,6 +1577,18 @@ export function renderFrame(
         // Ash-covered ground
         buffer[groundStart]![cx] = { char: h % 4 === 0 ? "░" : "█", color: "#2e2218" }
       }
+    }
+  }
+
+  // 8f2. Post-fire regeneration — bright green pioneer sprouts in ash zone
+  if (options.wildfire && options.wildfire.stage === "ash") {
+    const { x: pfx, width: pfw, seed: pfs } = options.wildfire
+    for (let dx = 0; dx < pfw; dx++) {
+      const cx = pfx + dx
+      if (cx < 0 || cx >= width) continue
+      const h = hash(cx * 43 + pfs * 7 + 55557)
+      if (h % 5 === 0)
+        buffer[groundStart - 1]![cx] = { char: "·", color: lerpColor("#40a820", "#80d040", (h % 10) / 10) }
     }
   }
 

@@ -113,6 +113,7 @@ let moth: { x: number; y: number; color: string; dx: number; dy: number } | null
 let migration: { xf: number; y: number; size: number; speed: number } | null = null
 let raccoon: { x: number; speed: number; washing: boolean; washTimer: number } | null = null
 let moleHills: { x: number; until: number }[] = []
+let murmuration: { x: number; y: number; dx: number; seed: number; until: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -174,6 +175,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     migration: migration ? { x: Math.floor(migration.xf), y: migration.y, size: migration.size } : undefined,
     raccoon: raccoon ? { x: raccoon.x, washing: raccoon.washing } : undefined,
     moleHills: moleHills.length > 0 ? moleHills.map(m => m.x) : undefined,
+    murmuration: murmuration ? { x: murmuration.x, y: murmuration.y, seed: murmuration.seed } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -368,6 +370,12 @@ export async function viewer(): Promise<void> {
     if (migration) {
       migration.xf += migration.speed
       if (migration.xf > width + migration.size * 2 + 20) migration = null
+    }
+    // Murmuration — undulating blob drifts and rotates at dusk
+    if (murmuration) {
+      murmuration.x += murmuration.dx
+      murmuration.seed += 1
+      if (Date.now() > murmuration.until || murmuration.x > width + 20 || murmuration.x < -20) murmuration = null
     }
     // Moth — erratic dusk-to-dawn drifter through canopy rows
     if (moth) {
@@ -1206,6 +1214,29 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleRaccoonSpawn()
+
+  // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
+  function scheduleMurmuration(): void {
+    const delay = (120 + Math.random() * 120) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const m = new Date().getMonth()
+      const isDusk = h >= 16 && h < 20
+      const isMurSeason = (m >= 8 && m <= 11) || m === 0
+      if (isDusk && isMurSeason && !murmuration && (forest?.trees.length ?? 0) >= 5) {
+        const width = process.stdout.columns || 80
+        murmuration = {
+          x: Math.floor(width * 0.2),
+          y: 2 + Math.floor(Math.random() * 2),
+          dx: 0.4 + Math.random() * 0.3,
+          seed: Math.floor(Math.random() * 100),
+          until: Date.now() + (3 + Math.random() * 5) * 60 * 1000,
+        }
+      }
+      scheduleMurmuration()
+    }, delay)
+  }
+  scheduleMurmuration()
 
   // Ground fog: cool mornings in spring/autumn, check every 5 min
   setInterval(() => {

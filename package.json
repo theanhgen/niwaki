@@ -1,6 +1,6 @@
 {
   "name": "niwaki",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Grow a forest in your terminal every time you use Claude Code",
   "type": "module",
   "bin": {

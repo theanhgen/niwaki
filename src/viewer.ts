@@ -91,6 +91,9 @@ let blowdown: { seed: number; fallen: { x: number; dir: 1 | -1 }[]; until: numbe
 let blight: { zones: number[]; intensity: number; seed: number; fadingOut: boolean } | null = null
 let frostEvent: { intensity: number; seed: number; fadingOut: boolean } | null = null
 let lightningScars: { x: number; until: number }[] = []
+let fallingLeaves: { xf: number; yf: number; dx: number; color: string; char: string }[] = []
+let groundMushrooms: { x: number; until: number }[] = []
+let morningDew = false
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -130,6 +133,9 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     blight: blight ? { zones: blight.zones, intensity: blight.intensity, seed: blight.seed } : undefined,
     frost: frostEvent ? { intensity: frostEvent.intensity, seed: frostEvent.seed } : undefined,
     lightningScars: lightningScars.length > 0 ? lightningScars.map(s => ({ x: s.x })) : undefined,
+    fallingLeaves: fallingLeaves.length > 0 ? fallingLeaves.map(l => ({ x: Math.floor(l.xf), y: Math.floor(l.yf), color: l.color, char: l.char })) : undefined,
+    groundMushrooms: groundMushrooms.length > 0 ? groundMushrooms.map(m => m.x) : undefined,
+    morningDew,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -217,6 +223,33 @@ export async function viewer(): Promise<void> {
       const bounds = getStreamBounds(forest!, width)
       if (!bounds || streamFish.x < bounds.x - 3 || streamFish.x > bounds.x + bounds.w + 3) streamFish = null
     }
+    // Autumn leaf fall — leaves drift diagonally down from canopy
+    const leafMonth = new Date().getMonth()
+    const isAutumn = leafMonth >= 8 && leafMonth <= 10
+    if (isAutumn && (forest?.trees.length ?? 0) > 0) {
+      const autumnPalette = leafMonth === 8
+        ? ["#b8aa30", "#c0b040", "#a89820"]
+        : leafMonth === 9
+        ? ["#d46030", "#c87820", "#b04818", "#c85030", "#d08820"]
+        : ["#8a5020", "#7a4018", "#a06030", "#6a3810"]
+      const leafChars = ["·", "∙", "'", "·"]
+      if (fallingLeaves.length < 18 && Math.random() < 0.35) {
+        const tree = forest!.trees[Math.floor(Math.random() * forest!.trees.length)]!
+        const jitter = Math.floor(Math.random() * 7) - 3
+        fallingLeaves.push({
+          xf: tree.x + jitter,
+          yf: SKY_ROWS + 1,
+          dx: (Math.random() - 0.5) * 0.4 + windStrength * 0.25,
+          color: autumnPalette[Math.floor(Math.random() * autumnPalette.length)]!,
+          char: leafChars[Math.floor(Math.random() * leafChars.length)]!,
+        })
+      }
+    }
+    fallingLeaves = fallingLeaves.filter(l => l.yf < SKY_ROWS + 9)
+    for (const l of fallingLeaves) {
+      l.yf += 0.18
+      l.xf += l.dx + (Math.random() - 0.5) * 0.12
+    }
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
 
@@ -293,6 +326,14 @@ export async function viewer(): Promise<void> {
       if (!frog && Math.random() < 0.6) {
         frog = { x: Math.floor(width * 0.3 + Math.random() * width * 0.4) }
         setTimeout(() => { frog = null }, (5 + Math.random() * 10) * 60 * 1000)
+      }
+      // Mushrooms sprout after rain — 3-6 scattered across ground, persist 20-50 min
+      const mushroomCount = 3 + Math.floor(Math.random() * 4)
+      const now2 = Date.now()
+      const mushroomDuration = (20 + Math.random() * 30) * 60 * 1000
+      groundMushrooms = groundMushrooms.filter(m => now2 < m.until)
+      for (let i = 0; i < mushroomCount; i++) {
+        groundMushrooms.push({ x: Math.floor(Math.random() * width), until: now2 + mushroomDuration })
       }
     } else if (!isRaining && Math.random() < 0.20) {
       isRaining = true
@@ -694,6 +735,20 @@ export async function viewer(): Promise<void> {
       frostEvent = { intensity: 0.1, seed: Math.floor(Math.random() * 99999), fadingOut: false }
     }
   }, 4 * 60 * 1000)
+
+  // Morning dew: present at dawn (5–9h) when not raining, clear by mid-morning
+  setInterval(() => {
+    const h = new Date().getHours()
+    morningDew = h >= 5 && h < 9 && !isRaining
+  }, 5 * 60 * 1000)
+  // Set immediately on start
+  ;(() => { const h = new Date().getHours(); morningDew = h >= 5 && h < 9 && !isRaining })()
+
+  // Mushroom expiry tick: clean up expired ground mushrooms
+  setInterval(() => {
+    const now = Date.now()
+    groundMushrooms = groundMushrooms.filter(m => now < m.until)
+  }, 60 * 1000)
 
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn
   setInterval(() => {

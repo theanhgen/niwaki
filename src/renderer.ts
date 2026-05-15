@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[] } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1388,6 +1388,45 @@ export function renderFrame(
           if (buffer[y]![sx]?.color)
             buffer[y]![sx] = { char: "│", color: lerpColor("#6a3010", "#3a1808", (y - scarY) / 3) }
         }
+      }
+    }
+  }
+
+  // 8m. Falling autumn leaves — drift diagonally through canopy rows
+  if (options.fallingLeaves && options.fallingLeaves.length > 0) {
+    for (const { x, y, color, char } of options.fallingLeaves) {
+      if (x < 0 || x >= width || y < SKY_ROWS || y >= groundStart) continue
+      if (!buffer[y]![x]?.color) buffer[y]![x] = { char, color }
+    }
+  }
+
+  // 8n. Post-rain mushrooms — small caps on ground, various earthy colors
+  if (options.groundMushrooms && options.groundMushrooms.length > 0) {
+    const mushroomColors = ["#a05828", "#8a3820", "#c07040", "#7a4828", "#b86838"]
+    for (const mx of options.groundMushrooms) {
+      if (mx < 0 || mx >= width) continue
+      const h = hash(mx * 67 + 55553)
+      const capColor = mushroomColors[h % mushroomColors.length]!
+      // Cap on undergrowth row
+      if (!buffer[groundStart - 1]![mx]?.color)
+        buffer[groundStart - 1]![mx] = { char: "∩", color: capColor }
+    }
+  }
+
+  // 8o. Morning dew — sparkle dots on undergrowth and low vegetation at dawn
+  if (options.morningDew) {
+    for (let x = 0; x < width; x++) {
+      const h = hash(x * 83 + 44443)
+      if (h % 5 === 0) {
+        const dewY = groundStart - 1
+        if (!buffer[dewY]![x]?.color)
+          buffer[dewY]![x] = { char: "·", color: lerpColor("#88c0d8", "#c0e4f0", (h & 15) / 15) }
+      }
+      // Also dew on lower canopy edges exposed to air
+      if (h % 9 === 0) {
+        const lowY = groundStart - 2
+        const cell = buffer[lowY]![x]
+        if (cell?.color) buffer[lowY]![x] = { char: cell.char, color: lerpColor(cell.color, "#b8ddf0", 0.25) }
       }
     }
   }

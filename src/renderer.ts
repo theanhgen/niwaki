@@ -638,6 +638,19 @@ export function renderFrame(
     }
   }
 
+  // Stream morning mist — cool air above water at dawn, pale wisps on second ground row
+  if ((period === "dawn" || (period === "day" && blend < 0.2)) && forest.trees.length >= 10 && !options.isRaining) {
+    const createdSeedM = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const mStreamX = Math.floor(width * 0.15 + hash(createdSeedM * 13 + 77) % Math.floor(width * 0.65))
+    const mStreamW = 14 + hash(mStreamX * 7 + 88) % 8
+    for (let i = 0; i < mStreamW; i++) {
+      const sx = mStreamX + i
+      if (sx < 0 || sx >= width) continue
+      if (hash(sx * 31 + 99991) % 3 === 0)
+        buffer[groundStart]![sx] = { char: "░", color: lerpColor("#c0c8d0", "#a8b8c8", hash(sx * 17 + 44443) % 10 / 10) }
+    }
+  }
+
   // Rain splashes on stream — `·` drip rings when raining
   if (options.isRaining && forest.trees.length >= 10) {
     const createdSeed2 = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -1185,6 +1198,21 @@ export function renderFrame(
       const colors = ["#3a6218", "#88c830", "#c8e850"] as const
       const chars = ["·", "·", "✦"] as const
       buffer[y]![x] = { char: chars[brightness]!, color: colors[brightness]! }
+    }
+  }
+
+  // Cicadas — summer afternoons, ∫ vibration in tree trunks, animated pulse
+  if (season === "summer" && (period === "day" || (period === "dusk" && blend < 0.5))) {
+    const seed = options.twinkleSeed ?? 0
+    for (const tree of forest.trees) {
+      if (tree.growth < 0.7) continue
+      if (hash(tree.id * 47 + seed * 13 + 55559) % 4 !== 0) continue
+      const cicY = groundStart - 3 - (hash(tree.id * 23 + 11117) % 2)
+      if (cicY < SKY_ROWS || cicY >= groundStart) continue
+      const cx = tree.x + (hash(tree.id * 31 + 22229) % 2 === 0 ? 1 : -1)
+      if (cx < 0 || cx >= width) continue
+      if (!buffer[cicY]![cx]?.color)
+        buffer[cicY]![cx] = { char: "∫", color: "#7a6030" }
     }
   }
 

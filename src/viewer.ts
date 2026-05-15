@@ -568,6 +568,11 @@ export async function viewer(): Promise<void> {
     if (hawk) {
       hawk.x += 1
       if (hawk.x > width + 3) hawk = null
+      // Rabbits and squirrel scatter when hawk is overhead
+      if (hawk && Math.random() < 0.15) {
+        rabbits.forEach(r => { r.speed = 4 })
+        if (squirrel) squirrel.paused = false
+      }
     }
   }, 2000)
 

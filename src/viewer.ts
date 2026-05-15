@@ -122,6 +122,7 @@ let salamander: { x: number; speed: number; tickCount: number } | null = null
 let jay: { x: number; speed: number; carrying: boolean } | null = null
 let aurora: { intensity: number; phase: number } | null = null
 let buzzard: { xf: number; y: number; angle: number; speed: number } | null = null
+let wren: { x: number; speed: number; pauseTimer: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -192,6 +193,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     jay: jay ? { x: jay.x, carrying: jay.carrying, leftward: jay.speed < 0 } : undefined,
     aurora: aurora ?? undefined,
     buzzard: buzzard ? { x: Math.floor(buzzard.xf), y: buzzard.y } : undefined,
+    wren: wren ? { x: wren.x } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -666,6 +668,17 @@ export async function viewer(): Promise<void> {
       jay.x += jay.speed
       if (jay.carrying && Math.random() < 0.05) jay.carrying = false
       if (jay.x > w + 3 || jay.x < -3) jay = null
+    }
+    // Wren — tiny fast undergrowth bird; scurries then pauses with cocked tail
+    if (wren) {
+      const w = process.stdout.columns || 80
+      if (wren.pauseTimer > 0) {
+        wren.pauseTimer--
+      } else {
+        wren.x += wren.speed
+        if (Math.random() < 0.15) wren.pauseTimer = 2 + Math.floor(Math.random() * 5)
+      }
+      if (wren.x > w + 3 || wren.x < -3) wren = null
     }
   }, 400)
 
@@ -1384,6 +1397,23 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleBuzzard()
+
+  // Wren — tiny common woodland bird, year-round, daylight hours, every 10-25 min
+  function scheduleWrenSpawn(): void {
+    const delay = (10 + Math.random() * 15) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isDay = h >= 6 && h < 20
+      if (isDay && !wren && (forest?.trees.length ?? 0) >= 3) {
+        const width = process.stdout.columns || 80
+        const fromLeft = Math.random() < 0.5
+        wren = { x: fromLeft ? -1 : width + 1, speed: fromLeft ? 1 : -1, pauseTimer: 0 }
+        setTimeout(() => { wren = null }, (4 + Math.random() * 8) * 60 * 1000)
+      }
+      scheduleWrenSpawn()
+    }, delay)
+  }
+  scheduleWrenSpawn()
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

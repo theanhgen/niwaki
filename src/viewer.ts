@@ -73,6 +73,8 @@ let hawk: { x: number } | null = null
 let squirrel: Squirrel | null = null
 let meteorShower = false
 let meteorShowerUntil = 0
+let heron: { x: number } | null = null
+let dragonfly: { x: number; y: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -94,6 +96,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     bats,
     hawk: hawk ?? undefined,
     squirrel: squirrel ?? undefined,
+    heron: heron ?? undefined,
+    dragonfly: dragonfly ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -336,15 +340,57 @@ export async function viewer(): Promise<void> {
   }
   scheduleBatSpawn()
 
-  // Lightning: rare flash during rain (3% per 500ms check)
-  setInterval(() => {
-    if (!isRaining || animating || Math.random() > 0.03) return
-    isLightning = true
-    renderForest(forest!, 0, activeMilestoneText)
+  // Heron: stands at stream edge during day/dawn, every 30-60 min, stays 5-20 min
+  function scheduleHeronVisit(): void {
+    const delay = (30 + Math.random() * 30) * 60 * 1000
     setTimeout(() => {
-      isLightning = false
-      if (!animating) renderForest(forest!, 0, activeMilestoneText)
-    }, 140)
+      const h = new Date().getHours()
+      const isDayOrDawn = (h >= 5 && h < 20)
+      if (isDayOrDawn && forest!.trees.length >= 10 && !heron) {
+        const width = process.stdout.columns || 80
+        heron = { x: Math.floor(width * 0.2 + Math.random() * width * 0.55) }
+        setTimeout(() => { heron = null }, (5 + Math.random() * 15) * 60 * 1000)
+      }
+      scheduleHeronVisit()
+    }, delay)
+  }
+  scheduleHeronVisit()
+
+  // Dragonfly: summer days near water, every 10-20 min, lasts 3-8 min
+  function scheduleDragonflySpawn(): void {
+    const delay = (10 + Math.random() * 10) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const m = new Date().getMonth()
+      const isSummer = m >= 5 && m <= 7
+      if (isSummer && h >= 8 && h < 19 && !dragonfly && forest!.trees.length >= 10) {
+        const width = process.stdout.columns || 80
+        dragonfly = { x: Math.floor(width * 0.2 + Math.random() * width * 0.6), y: 9 }
+        setTimeout(() => { dragonfly = null }, (3 + Math.random() * 5) * 60 * 1000)
+      }
+      scheduleDragonflySpawn()
+    }, delay)
+  }
+  scheduleDragonflySpawn()
+
+  // Lightning + dragonfly dart: 500ms tick
+  setInterval(() => {
+    if (isRaining && !animating && Math.random() < 0.03) {
+      isLightning = true
+      renderForest(forest!, 0, activeMilestoneText)
+      setTimeout(() => {
+        isLightning = false
+        if (!animating) renderForest(forest!, 0, activeMilestoneText)
+      }, 140)
+    }
+    if (dragonfly && Math.random() < 0.6) {
+      const width = process.stdout.columns || 80
+      const anchor = dragonfly
+      dragonfly = {
+        x: Math.max(0, Math.min(width - 1, anchor.x + Math.floor(Math.random() * 7) - 3)),
+        y: Math.max(11 - 3, Math.min(11 - 1, anchor.y + (Math.random() < 0.5 ? -1 : 1))),
+      }
+    }
   }, 500)
 
   // Comet: rare night event, 0.1% per 5s check, crosses at 1 col/5s

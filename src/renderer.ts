@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -568,6 +568,23 @@ export function renderFrame(
   // 7f. Hawk — solitary soaring raptor during day, slow crossing at high altitude
   if (options.hawk && options.hawk.x >= 0 && options.hawk.x < width) {
     buffer[0]![options.hawk.x] = { char: "^", color: "#4a3a28" }
+  }
+
+  // 7g. Heron — stands motionless at stream edge fishing (T silhouette)
+  if (options.heron && options.heron.x >= 0 && options.heron.x < width) {
+    const hx = options.heron.x
+    buffer[undergrowthY]![hx] = { char: "T", color: "#8898a8" }
+    if (groundStart < buffer.length && hx < width) {
+      buffer[groundStart]![hx] = { char: "|", color: "#7a8898" }
+    }
+  }
+
+  // 7h. Dragonfly — summer, iridescent dart near water
+  if (options.dragonfly) {
+    const { x: dx, y: dy } = options.dragonfly
+    if (dy >= SKY_ROWS && dy < groundStart && dx >= 0 && dx < width) {
+      buffer[dy]![dx] = { char: "=", color: "#28c8b8" }
+    }
   }
 
   // 7b. Lightning bolt in sky
@@ -832,6 +849,17 @@ export function renderFrame(
         if (h % mistDensity !== 0) continue
         buffer[y]![x] = { char: h % 3 === 0 ? "▒" : "░", color: "#8a7a9a" }
       }
+    }
+  }
+
+  // Morning frost — autumn/winter dawn, ice crystals on the ground
+  if (period === "dawn" && (season === "winter" || season === "autumn")) {
+    const frostDensity = season === "winter" ? 4 : 7
+    for (let x = 0; x < width; x++) {
+      const cell = buffer[groundStart]![x]
+      if (cell?.char !== "█" && cell?.char !== "░") continue  // only bare ground
+      if (hash(x * 61 + 44440) % frostDensity !== 0) continue
+      buffer[groundStart]![x] = { char: "·", color: "#c0d4e0" }
     }
   }
 

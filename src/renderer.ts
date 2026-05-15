@@ -908,12 +908,13 @@ export function renderFrame(
     }
   }
 
-  // 7c. Deer — grazes at undergrowth level at dawn/dusk
+  // 7c. Deer — grazes at undergrowth level; autumn rut adds Ψ antler rack
   if (options.deer) {
     const dy = groundStart - 1
     const dx = options.deer.x
     if (dx >= 1 && dx < width) {
-      buffer[dy]![dx] = { char: "Y", color: "#9a7a50" }
+      const isRut = season === "autumn"
+      buffer[dy]![dx] = { char: isRut ? "Ψ" : "Y", color: isRut ? "#8a6a40" : "#9a7a50" }
       buffer[dy]![dx - 1] = { char: ":", color: "#8a6a40" }
     }
   }
@@ -961,6 +962,22 @@ export function renderFrame(
           // Top of this canopy column — blend existing color toward snow white
           buffer[y]![x] = { char: "█", color: lerpColor(cell.color, "#d0e4f4", 0.75) }
           break
+        }
+      }
+    }
+  }
+
+  // 7d2b. Golden hour — warm amber tint bleeds onto canopy tops at dawn/dusk
+  if ((period === "dawn" && blend > 0.35) || (period === "dusk" && blend < 0.65)) {
+    const warmStrength = period === "dawn" ? Math.min(1, (blend - 0.35) / 0.4) : Math.min(1, (0.65 - blend) / 0.4)
+    if (warmStrength > 0) {
+      for (let x = 0; x < width; x++) {
+        for (let y = SKY_ROWS; y < groundStart - 2; y++) {
+          const cell = buffer[y]![x]
+          if (cell?.color) {
+            buffer[y]![x] = { char: cell.char, color: lerpColor(cell.color, "#e87028", warmStrength * 0.45) }
+            break
+          }
         }
       }
     }
@@ -1018,6 +1035,19 @@ export function renderFrame(
       { char: "·", color: "#6a5030" },
     ] as const
     if (variant < 4) buffer[undergrowthY]![x] = parts[variant]!
+  }
+
+  // Deep shade ferns — grow under dense canopy in damp seasons (spring/summer/autumn)
+  if (season !== "winter" && forest.trees.length >= 12) {
+    for (let x = 0; x < width; x++) {
+      if (buffer[undergrowthY]![x]?.color) continue
+      let canopyRows = 0
+      for (let y = SKY_ROWS; y < groundStart - 1; y++) {
+        if (buffer[y]![x]?.color) canopyRows++
+      }
+      if (canopyRows >= 3 && hash(x * 41 + forest.trees.length * 7 + 22223) % 4 === 0)
+        buffer[undergrowthY]![x] = { char: "∇", color: "#2a5020" }
+    }
   }
 
   // Wildflowers — spring/summer, scattered colored blooms in undergrowth

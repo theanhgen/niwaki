@@ -10,7 +10,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun build bin/niwaki.ts --outfile dist/bin/niwaki.js --target node --minify-whitespace --minify-syntax",
+    "build": "bun build bin/niwaki.ts --outfile dist/bin/niwaki.js --target node --minify-whitespace",
     "dev": "bun run bin/niwaki.ts",
     "test": "bun test"
   },

@@ -407,6 +407,8 @@ export function renderFrame(
   const { period, blend } = getTimeOfDay(now)
   const season = getSeason(now.getMonth())
 
+  const undergrowthY = groundStart - 1
+
   // Hoisted stream bounds — computed once, used by every section that needs stream position
   const forestSeed = forest.createdAt.slice(0, 10).split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
   const streamX = Math.floor(width * 0.15 + hash(forestSeed * 13 + 77) % Math.floor(width * 0.65))
@@ -2091,7 +2093,6 @@ export function renderFrame(
   }
 
   // 8a. Undergrowth — sparse details between tree trunks
-  const undergrowthY = groundStart - 1
   for (let x = 0; x < width; x++) {
     if (buffer[undergrowthY]![x]?.color !== null) continue
     const h = hash(x * 71 + forest.trees.length * 17 + 999)

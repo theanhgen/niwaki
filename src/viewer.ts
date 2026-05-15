@@ -46,6 +46,13 @@ interface Rabbit {
   speed: number
 }
 
+interface Squirrel {
+  x: number
+  speed: number
+  paused: boolean
+  pauseLeft: number
+}
+
 let birds: Bird[] = []
 let foxes: Fox[] = []
 let rabbits: Rabbit[] = []
@@ -63,6 +70,9 @@ let comet: { x: number; y: number } | null = null
 let bearPrints: number[] | null = null
 let bats: { x: number; y: number; speed: number }[] = []
 let hawk: { x: number } | null = null
+let squirrel: Squirrel | null = null
+let meteorShower = false
+let meteorShowerUntil = 0
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -83,6 +93,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     bearPrints: bearPrints ?? undefined,
     bats,
     hawk: hawk ?? undefined,
+    squirrel: squirrel ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -159,14 +170,23 @@ export async function viewer(): Promise<void> {
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
 
-  // Shooting star trigger: rare, night-only (~0.8% per 2s = roughly once per 4 min at night)
+  // Shooting star trigger — normal + rare meteor shower (multi-star burst)
   setInterval(() => {
     const h = new Date().getHours()
     const isNight = h >= 22 || h < 5
-    if (!isNight || Math.random() > 0.008) return
+    if (!isNight) return
+    const now = Date.now()
+    if (meteorShower && now > meteorShowerUntil) meteorShower = false
+    if (!meteorShower && Math.random() < 0.0005) {
+      meteorShower = true
+      meteorShowerUntil = now + (40 + Math.random() * 50) * 1000
+    }
     const width = process.stdout.columns || 80
-    const startX = Math.floor(Math.random() * (width * 0.55))
-    for (let i = 0; i < 5; i++) shootingStarTrail.push({ x: startX - i * 2, y: i })
+    const spawnCount = meteorShower ? 2 + Math.floor(Math.random() * 3) : (Math.random() < 0.008 ? 1 : 0)
+    for (let s = 0; s < spawnCount; s++) {
+      const startX = Math.floor(Math.random() * (width * 0.65))
+      for (let i = 0; i < 5; i++) shootingStarTrail.push({ x: startX - i * 2, y: i })
+    }
   }, 2000)
 
   // Bird spawn scheduler — season-aware migration
@@ -208,13 +228,26 @@ export async function viewer(): Promise<void> {
     }
   }, 90 * 1000)
 
-  // Fox + rabbit movement
+  // Fox + rabbit + squirrel movement
   setInterval(() => {
     const width = process.stdout.columns || 80
     foxes = foxes.filter((f) => f.x <= width + 2)
     foxes.forEach((f) => { f.x += f.speed })
     rabbits = rabbits.filter((r) => r.x <= width + 2)
     rabbits.forEach((r) => { r.x += r.speed })
+    if (squirrel) {
+      if (squirrel.x > width + 3) { squirrel = null }
+      else if (squirrel.paused) {
+        squirrel.pauseLeft -= 1
+        if (squirrel.pauseLeft <= 0) squirrel.paused = false
+      } else {
+        squirrel.x += squirrel.speed
+        if (Math.random() < 0.22) {
+          squirrel.paused = true
+          squirrel.pauseLeft = 2 + Math.floor(Math.random() * 4)
+        }
+      }
+    }
   }, 400)
 
   // Deer: crepuscular — spawns at dawn (5–8h) or dusk (17–21h), grazes then slowly walks off
@@ -250,6 +283,19 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleHawkSpawn()
+
+  // Squirrel spawn: mornings and afternoons, every 10-25 min, dash-pause behavior
+  function scheduleSquirrelSpawn(): void {
+    const delay = (10 + Math.random() * 15) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      if (!squirrel && ((h >= 5 && h < 12) || (h >= 14 && h < 18))) {
+        squirrel = { x: -2, speed: 3, paused: false, pauseLeft: 0 }
+      }
+      scheduleSquirrelSpawn()
+    }, delay)
+  }
+  scheduleSquirrelSpawn()
 
   // Rabbit spawn: dawn only (5–8h), every 4–10 min, faster than fox
   function scheduleRabbitSpawn(): void {

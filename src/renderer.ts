@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -508,8 +508,13 @@ export function renderFrame(
     for (let i = 0; i < streamW; i++) {
       const sx = streamX + i
       if (sx < 0 || sx >= width) continue
-      const shimmer = hash(sx * 53 + seed * 37 + 22222) % 2 === 0
-      buffer[groundStart + 1]![sx] = { char: shimmer ? "≈" : "~", color: streamColor }
+      if (season === "winter") {
+        const isIce = hash(sx * 31 + 33333) % 2 === 0
+        buffer[groundStart + 1]![sx] = isIce ? { char: "─", color: "#a8c0d0" } : { char: "~", color: "#3a5878" }
+      } else {
+        const shimmer = hash(sx * 53 + seed * 37 + 22222) % 2 === 0
+        buffer[groundStart + 1]![sx] = { char: shimmer ? "≈" : "~", color: streamColor }
+      }
     }
   }
 
@@ -597,6 +602,13 @@ export function renderFrame(
       buffer[ry]![rabbit.x] = { char: ">", color: "#b8aa90" }
       buffer[ry]![rabbit.x - 1] = { char: "·", color: "#a09880" }
     }
+  }
+
+  // 7b2. Squirrel — dash-pause-dash along undergrowth, bushy ø tail
+  if (options.squirrel && options.squirrel.x >= 1 && options.squirrel.x < width) {
+    const sx = options.squirrel.x
+    buffer[undergrowthY]![sx] = { char: ">", color: "#c09040" }
+    buffer[undergrowthY]![sx - 1] = { char: "ø", color: "#d0a850" }
   }
 
   // 7c. Deer — grazes at undergrowth level at dawn/dusk

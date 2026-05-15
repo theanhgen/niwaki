@@ -636,6 +636,35 @@ export function renderFrame(
     }
   }
 
+  // Dog rose — summer pink blooms in bramble/edge patches; hedgerow classic
+  if (season === "summer" && forest.trees.length >= 8) {
+    const roseSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const roseX = Math.floor(width * 0.65 + hash(roseSeed * 7 + 33337) % Math.floor(width * 0.25))
+    for (let dx = 0; dx < 4; dx++) {
+      const rx = roseX + dx
+      if (rx >= width) continue
+      if (!buffer[undergrowthY]![rx]?.color) {
+        const roseColors = ["#e070a0", "#f090b0", "#e060a8"]
+        buffer[undergrowthY]![rx] = { char: dx % 2 === 0 ? "✿" : "·", color: roseColors[dx % roseColors.length]! }
+      }
+    }
+  }
+
+  // Elderflower — spring, flat white flower heads on elder shrubs
+  if (season === "spring" && forest.trees.length >= 10) {
+    const m = now.getMonth()
+    if (m >= 4 && m <= 6) { // May-July
+      const elderSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+      const elderX = Math.floor(width * 0.35 + hash(elderSeed * 11 + 22221) % Math.floor(width * 0.3))
+      for (let dx = 0; dx < 3; dx++) {
+        const ex = elderX + dx
+        if (ex >= width) continue
+        if (!buffer[undergrowthY]![ex]?.color)
+          buffer[undergrowthY]![ex] = { char: "✤", color: "#f0f0e0" } // cream-white
+      }
+    }
+  }
+
   // Bracken fern — summer/autumn, distinctive fronds in undergrowth near mature trees
   if ((season === "summer" || season === "autumn") && forest.trees.length >= 10) {
     for (const tree of forest.trees) {
@@ -822,7 +851,7 @@ export function renderFrame(
     const streamX = Math.floor(width * 0.15 + hash(createdSeed * 13 + 77) % Math.floor(width * 0.65))
     const streamW = 14 + hash(streamX * 7 + 88) % 8
     const seed = options.twinkleSeed ?? 0
-    const streamColor = options.postRain ? "#5aaaca" : "#2a6a8a"
+    const streamColor = options.isRaining ? "#3a7ab0" : options.postRain ? "#5aaaca" : "#2a6a8a"
     for (let i = 0; i < streamW; i++) {
       const sx = streamX + i
       if (sx < 0 || sx >= width) continue

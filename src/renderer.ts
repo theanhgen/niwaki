@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -522,8 +522,11 @@ export function renderFrame(
         const isIce = hash(sx * 31 + 33333) % 2 === 0
         buffer[groundStart + 1]![sx] = isIce ? { char: "─", color: "#a8c0d0" } : { char: "~", color: "#3a5878" }
       } else {
+        const starReflect = period === "night" && hash(sx * 41 + seed * 23 + 11111) % 5 === 0
         const shimmer = hash(sx * 53 + seed * 37 + 22222) % 2 === 0
-        buffer[groundStart + 1]![sx] = { char: shimmer ? "≈" : "~", color: streamColor }
+        buffer[groundStart + 1]![sx] = starReflect
+          ? { char: "·", color: "#5070a0" }
+          : { char: shimmer ? "≈" : "~", color: streamColor }
       }
     }
   }
@@ -597,6 +600,14 @@ export function renderFrame(
     buffer[undergrowthY]![hx] = { char: "T", color: "#8898a8" }
     if (groundStart < buffer.length && hx < width) {
       buffer[groundStart]![hx] = { char: "|", color: "#7a8898" }
+    }
+  }
+
+  // 7g2. Woodpecker — taps on tree trunk during day, pecking animation
+  if (options.woodpecker) {
+    const { x: wx, y: wy, peck } = options.woodpecker
+    if (wy >= 0 && wy < buffer.length && wx >= 0 && wx < width) {
+      buffer[wy]![wx] = { char: peck ? "!" : "|", color: "#c03018" }
     }
   }
 
@@ -767,6 +778,23 @@ export function renderFrame(
       if (buffer[ly]![x]?.color !== null) continue
       const leafColors = ["#c4701a", "#e8a020", "#d45010"] as const
       buffer[ly]![x] = { char: "·", color: leafColors[h % 3]! }
+    }
+  }
+
+  // Autumn falling leaves — mid-air descent animated by twinkle seed
+  if (season === "autumn" && !options.isRaining) {
+    const seed = options.twinkleSeed ?? 0
+    const windDrift = (options.windStrength ?? 0) + 1
+    const count = Math.max(3, Math.floor(width * 0.05))
+    for (let i = 0; i < count; i++) {
+      const baseX = hash(i * 97 + 66666) % width
+      const baseY = hash(i * 97 + 77777) % (TREE_ROWS - 1)
+      const y = SKY_ROWS + (baseY + seed) % TREE_ROWS
+      const x = (baseX + Math.floor(seed * windDrift * 0.4)) % width
+      if (y >= SKY_ROWS + TREE_ROWS) continue
+      if (buffer[y]![x]?.color !== null) continue
+      const leafColors = ["#c4701a", "#e8a020", "#d45010", "#b85010"] as const
+      buffer[y]![x] = { char: "·", color: leafColors[hash(i * 97 + 66666) % 4]! }
     }
   }
 

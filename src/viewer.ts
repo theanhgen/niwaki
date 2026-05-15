@@ -76,6 +76,7 @@ let meteorShowerUntil = 0
 let heron: { x: number } | null = null
 let dragonfly: { x: number; y: number } | null = null
 let streamFish: { x: number; leftward: boolean } | null = null
+let woodpecker: { x: number; y: number; peck: boolean } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -100,6 +101,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     heron: heron ?? undefined,
     dragonfly: dragonfly ?? undefined,
     streamFish: streamFish ?? undefined,
+    woodpecker: woodpecker ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -400,6 +402,21 @@ export async function viewer(): Promise<void> {
   }
   scheduleStreamFish()
 
+  // Woodpecker: daytime, picks a random tree, taps for 2-5 min, every 15-30 min
+  function scheduleWoodpecker(): void {
+    const delay = (15 + Math.random() * 15) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      if (h >= 7 && h < 19 && !woodpecker && forest!.trees.length > 0) {
+        const tree = forest!.trees[Math.floor(Math.random() * forest!.trees.length)]!
+        woodpecker = { x: tree.x, y: 8, peck: false }
+        setTimeout(() => { woodpecker = null }, (2 + Math.random() * 3) * 60 * 1000)
+      }
+      scheduleWoodpecker()
+    }, delay)
+  }
+  scheduleWoodpecker()
+
   // Lightning + dragonfly dart: 500ms tick
   setInterval(() => {
     if (isRaining && !animating && Math.random() < 0.03) {
@@ -410,6 +427,7 @@ export async function viewer(): Promise<void> {
         if (!animating) renderForest(forest!, 0, activeMilestoneText)
       }, 140)
     }
+    if (woodpecker) woodpecker.peck = !woodpecker.peck
     if (dragonfly && Math.random() < 0.6) {
       const width = process.stdout.columns || 80
       const anchor = dragonfly

@@ -638,6 +638,20 @@ export function renderFrame(
     }
   }
 
+  // Rain splashes on stream — `·` drip rings when raining
+  if (options.isRaining && forest.trees.length >= 10) {
+    const createdSeed2 = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const sStreamX = Math.floor(width * 0.15 + hash(createdSeed2 * 13 + 77) % Math.floor(width * 0.65))
+    const sStreamW = 14 + hash(sStreamX * 7 + 88) % 8
+    const seed2 = options.twinkleSeed ?? 0
+    for (let i = 0; i < sStreamW; i++) {
+      const sx = sStreamX + i
+      if (sx < 0 || sx >= width) continue
+      if (hash(sx * 29 + seed2 * 17 + 88887) % 4 === 0)
+        buffer[groundStart + 1]![sx] = { char: "·", color: "#8ab8d0" }
+    }
+  }
+
   // Stream fish — brief silver dart crossing the water
   if (options.streamFish) {
     const { x: fx, leftward } = options.streamFish
@@ -701,6 +715,23 @@ export function renderFrame(
       if (ivyY < SKY_ROWS) break
       if (!buffer[ivyY]![ivyCol]?.color)
         buffer[ivyY]![ivyCol] = { char: i % 2 === 0 ? "┆" : "╎", color: lerpColor("#3a7030", "#60a048", i / ivyH) }
+    }
+  }
+
+  // 6c5. Trunk shelf fungi — ~20% of ancient trees (growth ≥ 0.95), bracket mushroom on mid-trunk
+  for (const tree of forest.trees) {
+    if (tree.growth < 0.95 || tree.type === "stump") continue
+    if (hash(tree.id * 61 + 99997) % 5 !== 0) continue
+    const fungusX = tree.x + 1
+    if (fungusX >= width) continue
+    for (let y = groundStart - 3; y < groundStart - 1; y++) {
+      const cell = buffer[y]![tree.x]
+      if (cell?.color && cell.char === "█") {
+        const fungusColor = lerpColor("#c06828", "#a04020", hash(tree.id * 41 + 33331) % 10 / 10)
+        if (!buffer[y]![fungusX]?.color)
+          buffer[y]![fungusX] = { char: "Γ", color: fungusColor }
+        break
+      }
     }
   }
 
@@ -1674,6 +1705,41 @@ export function renderFrame(
     const beetleY = groundStart - 1
     if (bx >= 0 && bx < width && !buffer[beetleY]![bx]?.color)
       buffer[beetleY]![bx] = { char: "∙", color: "#2a3820" }
+  }
+
+  // 8zf. Acorn/seed litter — autumn ground scatter near seed-bearing species
+  if (season === "autumn" && forest.trees.length >= 8) {
+    const litterSpecies = new Set(["oak", "maple", "cherry", "pine", "ginkgo", "beech"])
+    const litterColors: Record<string, string> = { oak: "#6a4020", maple: "#8a3018", cherry: "#6a1830", pine: "#5a4020", ginkgo: "#c8a030", beech: "#5a3818" }
+    for (const tree of forest.trees) {
+      if (!litterSpecies.has(tree.type) || tree.growth < 0.5) continue
+      const spread = 6
+      for (let dx = -spread; dx <= spread; dx++) {
+        const lx = tree.x + dx
+        if (lx < 0 || lx >= width) continue
+        if (hash(lx * 37 + tree.id * 19 + 66661) % 7 !== 0) continue
+        if (!buffer[groundStart - 1]![lx]?.color)
+          buffer[groundStart - 1]![lx] = { char: "◦", color: litterColors[tree.type] ?? "#6a4020" }
+      }
+    }
+  }
+
+  // 8zg. Ant trail — animated procession between two established trees, spring to autumn
+  if (season !== "winter" && forest.trees.length >= 15) {
+    const seed3 = options.twinkleSeed ?? 0
+    const treeA = forest.trees[hash(forest.trees.length * 7 + 11113) % forest.trees.length]!
+    const treeB = forest.trees[hash(forest.trees.length * 13 + 22221) % forest.trees.length]!
+    if (treeA !== treeB) {
+      const ax = Math.min(treeA.x, treeB.x)
+      const bx = Math.max(treeA.x, treeB.x)
+      const antY = groundStart - 1
+      for (let x = ax; x <= bx; x++) {
+        if (hash(x * 11 + seed3 * 7 + 55551) % 5 === 0) {
+          if (!buffer[antY]![x]?.color)
+            buffer[antY]![x] = { char: "·", color: "#3a2810" }
+        }
+      }
+    }
   }
 
   // 8zd. Ground fog — low mist layer on cool mornings (spring/autumn), hugs ground rows

@@ -573,6 +573,7 @@ export function renderFrame(
     const logX = Math.floor(width * 0.28 + hash(logSeed * 7 + 11111) % Math.floor(width * 0.42))
     const logW = 5 + hash(logSeed * 3 + 22222) % 5
     const logY = groundStart - 1
+    const isFoxfire = period === "night" && season === "summer"
     for (let i = 0; i < logW; i++) {
       const lx = logX + i
       if (lx < 0 || lx >= width) continue
@@ -580,7 +581,12 @@ export function renderFrame(
       const hasMoss = lh % 3 === 0
       const isBark = lh % 5 === 0
       const logColor = lerpColor("#5a3820", "#3a2010", i / logW)
-      buffer[logY]![lx] = { char: hasMoss ? "░" : isBark ? "≡" : "─", color: hasMoss ? lerpColor(logColor, "#4a6828", 0.65) : logColor }
+      if (isFoxfire && lh % 4 === 0) {
+        // Bioluminescent fungi — soft blue-green glow on log at summer nights
+        buffer[logY]![lx] = { char: "░", color: lerpColor("#1a6030", "#40d060", (lh % 10) / 10) }
+      } else {
+        buffer[logY]![lx] = { char: hasMoss ? "░" : isBark ? "≡" : "─", color: hasMoss ? lerpColor(logColor, "#4a6828", 0.65) : logColor }
+      }
     }
   }
 
@@ -1049,7 +1055,7 @@ export function renderFrame(
     }
   }
 
-  // 7c. Deer — grazes at undergrowth level; autumn rut adds Ψ antler rack
+  // 7c. Deer — grazes at undergrowth level; autumn rut: Ψ antlers; spring: fawn follows
   if (options.deer) {
     const dy = groundStart - 1
     const dx = options.deer.x
@@ -1057,6 +1063,9 @@ export function renderFrame(
       const isRut = season === "autumn"
       buffer[dy]![dx] = { char: isRut ? "Ψ" : "Y", color: isRut ? "#8a6a40" : "#9a7a50" }
       buffer[dy]![dx - 1] = { char: ":", color: "#8a6a40" }
+      // Fawn in spring — tiny · following 3 cols behind mother
+      if (season === "spring" && dx - 3 >= 0)
+        buffer[dy]![dx - 3] = { char: "·", color: "#c0a870" }
     }
   }
 
@@ -1120,6 +1129,24 @@ export function renderFrame(
             break
           }
         }
+      }
+    }
+  }
+
+  // 7d2c. Sunshafts through canopy gaps — bright warm column reaching ground in empty canopy lanes
+  if (period === "day" && !options.isRaining && forest.trees.length >= 8) {
+    for (let x = 2; x < width - 2; x++) {
+      // Find columns with no canopy cells at all
+      let hasCanopy = false
+      for (let y = SKY_ROWS; y < groundStart - 1; y++) {
+        if (buffer[y]![x]?.color) { hasCanopy = true; break }
+      }
+      if (!hasCanopy && hash(x * 37 + forest.trees.length * 7 + 44441) % 5 === 0) {
+        // Shaft: warm pale light on ground row
+        const shaftColor = lerpColor(biome.ground[0]!, "#f0d898", 0.3)
+        buffer[groundStart]![x] = { char: buffer[groundStart]![x]!.char, color: shaftColor }
+        if (!buffer[groundStart - 1]![x]?.color)
+          buffer[groundStart - 1]![x] = { char: "·", color: "#f8e8b0" }
       }
     }
   }

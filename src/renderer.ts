@@ -342,12 +342,56 @@ function seasonTintColor(hex: string, season: string): string {
   })
 }
 
+// ── Cloud rendering ──────────────────────────────────────────────────────────
+
+function cloudColor(density: 0 | 1 | 2, period: TimePeriod, blend: number): string {
+  // base palette per density: [light, medium, heavy]
+  const day   = ["#c8d4e0", "#8898a8", "#505e6e"] as const
+  const night = ["#1e2630", "#141c24", "#0c1018"] as const
+  const warm  = ["#e09868", "#b06030", "#783018"] as const  // golden-hour peak
+
+  const d = density
+  if (period === "night") return night[d]
+  if (period === "day")   return day[d]
+  // dawn/dusk: cycle through warm peak at blend ≈ 0.5
+  const warmPeak = Math.sin(blend * Math.PI)
+  const base = period === "dawn" ? lerpColor(night[d], day[d], blend) : lerpColor(day[d], night[d], blend)
+  return lerpColor(base, warm[d], warmPeak * 0.75)
+}
+
+function drawCloud(
+  buffer: Grid, cx: number, cy: number, cw: number,
+  density: 0 | 1 | 2, period: TimePeriod, blend: number, width: number,
+): void {
+  const chars = ["░", "▒", "▓"] as const
+  const baseChar = chars[density]
+  const baseCol  = cloudColor(density, period, blend)
+  const lightDensity = Math.max(0, density - 1) as 0 | 1 | 2
+  const lightChar = chars[lightDensity]
+  const lightCol  = cloudColor(lightDensity, period, blend)
+
+  // base row — full width
+  for (let i = 0; i < cw; i++) {
+    const x = cx + i
+    if (x >= 0 && x < width && cy >= 0 && cy < SKY_ROWS)
+      buffer[cy]![x] = { char: baseChar, color: baseCol }
+  }
+  // upper row — lighter, 1 cell narrower each side
+  if (cy - 1 >= 0 && cy - 1 < SKY_ROWS) {
+    for (let i = 1; i < cw - 1; i++) {
+      const x = cx + i
+      if (x >= 0 && x < width)
+        buffer[cy - 1]![x] = { char: lightChar, color: lightCol }
+    }
+  }
+}
+
 // ── renderFrame ──────────────────────────────────────────────────────────────
 
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[] } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -483,6 +527,13 @@ export function renderFrame(
   const moonY = 1
   if (moonX >= 0 && moonX < width) {
     buffer[moonY]![moonX] = { char: moonChar, color: moonColor }
+  }
+
+  // 4b. Clouds — rendered after stars/moon so they cover them; birds/bats drawn later in front
+  if (options.clouds) {
+    for (const c of options.clouds) {
+      drawCloud(buffer, c.x, c.y, c.width, c.density, period, blend, width)
+    }
   }
 
   // 5. Ground fill

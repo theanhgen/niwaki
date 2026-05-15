@@ -82,6 +82,7 @@ let frog: { x: number } | null = null
 let fireflies: { x: number; y: number; lit: boolean; blinkTimer: number }[] = []
 let owl: { x: number; y: number } | null = null
 let butterfly: { x: number; y: number; color: string; dx: number; dy: number } | null = null
+let clouds: { xf: number; y: number; width: number; density: 0|1|2 }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -112,6 +113,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     fireflies: fireflies.length > 0 ? fireflies : undefined,
     owl: owl ?? undefined,
     butterfly: butterfly ?? undefined,
+    clouds: clouds.length > 0 ? clouds.map(c => ({ x: Math.floor(c.xf), y: c.y, width: c.width, density: c.density })) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -185,6 +187,14 @@ export async function viewer(): Promise<void> {
     shootingStarTrail = shootingStarTrail
       .map((p) => ({ x: p.x + 2, y: p.y + 1 }))
       .filter((p) => p.y < SKY_ROWS && p.x < width)
+    // Clouds drift left-to-right, speed scales with wind; wrap when off-screen
+    for (const c of clouds) {
+      c.xf += 0.08 + windStrength * 0.12
+      if (c.xf > width + c.width) {
+        c.xf = -(c.width + 5)
+        c.y = 2 + Math.floor(Math.random() * Math.max(1, SKY_ROWS - 4))
+      }
+    }
     // Stream fish swims 1 col per tick, clears when out of stream
     if (streamFish) {
       streamFish.x += streamFish.leftward ? -1 : 1
@@ -236,14 +246,35 @@ export async function viewer(): Promise<void> {
   scheduleBirdSpawn()
 
   // Rain tick: check every 90s, 20% chance to start a 3–10 min shower
+  function spawnCloud(w: number, density: 0|1|2, startOffscreen = false): typeof clouds[0] {
+    const width = w
+    const cloudW = 10 + Math.floor(Math.random() * 20)
+    const y = 2 + Math.floor(Math.random() * Math.max(1, SKY_ROWS - 4))
+    const xf = startOffscreen ? -(cloudW + 5) : Math.random() * width
+    return { xf, y, width: cloudW, density }
+  }
+
+  // Seed initial fair-weather clouds
+  const initW = process.stdout.columns || 80
+  for (let i = 0; i < 1 + Math.floor(Math.random() * 2); i++) {
+    clouds.push(spawnCloud(initW, (Math.random() < 0.7 ? 0 : 1) as 0|1, false))
+  }
+
+  // Rain tick: check every 90s, 20% chance to start a 3–10 min shower
   setInterval(() => {
     const now = Date.now()
+    const width = process.stdout.columns || 80
     if (isRaining && now > rainUntil) {
       isRaining = false
       postRainUntil = now + 5 * 60 * 1000
+      // Thin clouds back to 1-2 clearing cumulus
+      for (const c of clouds) c.density = Math.max(0, c.density - 1) as 0|1|2
+      setTimeout(() => {
+        clouds = clouds.slice(0, 2)
+        for (const c of clouds) c.density = 0
+      }, 4 * 60 * 1000)
       // Frog emerges after rain — hopping to stream edge
       if (!frog && Math.random() < 0.6) {
-        const width = process.stdout.columns || 80
         frog = { x: Math.floor(width * 0.3 + Math.random() * width * 0.4) }
         setTimeout(() => { frog = null }, (5 + Math.random() * 10) * 60 * 1000)
       }
@@ -251,8 +282,10 @@ export async function viewer(): Promise<void> {
       isRaining = true
       rainUntil = now + (3 + Math.random() * 7) * 60 * 1000
       rainEventCount += 1
+      // Build storm clouds
+      while (clouds.length < 4) clouds.push(spawnCloud(width, 2, clouds.length < 2))
+      for (const c of clouds) c.density = 2
       if (rainEventCount >= 3 && fairyRingX === null) {
-        const width = process.stdout.columns || 80
         fairyRingX = Math.floor(width * 0.3 + Math.random() * width * 0.4)
       }
     }

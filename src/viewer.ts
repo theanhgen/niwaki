@@ -94,6 +94,8 @@ let lightningScars: { x: number; until: number }[] = []
 let fallingLeaves: { xf: number; yf: number; dx: number; color: string; char: string }[] = []
 let groundMushrooms: { x: number; until: number }[] = []
 let morningDew = false
+let pollenDrift: { xf: number; yf: number; dx: number }[] = []
+let spiderWebs: { x: number; span: number; until: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -136,6 +138,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     fallingLeaves: fallingLeaves.length > 0 ? fallingLeaves.map(l => ({ x: Math.floor(l.xf), y: Math.floor(l.yf), color: l.color, char: l.char })) : undefined,
     groundMushrooms: groundMushrooms.length > 0 ? groundMushrooms.map(m => m.x) : undefined,
     morningDew,
+    pollenDrift: pollenDrift.length > 0 ? pollenDrift.map(p => ({ x: Math.floor(p.xf), y: Math.floor(p.yf) })) : undefined,
+    spiderWebs: spiderWebs.length > 0 ? spiderWebs.map(w => ({ x: w.x, span: w.span })) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -222,6 +226,25 @@ export async function viewer(): Promise<void> {
       streamFish.x += streamFish.leftward ? -1 : 1
       const bounds = getStreamBounds(forest!, width)
       if (!bounds || streamFish.x < bounds.x - 3 || streamFish.x > bounds.x + bounds.w + 3) streamFish = null
+    }
+    // Spring pollen drift — motes float gently sideways through canopy
+    const pollenMonth = new Date().getMonth()
+    const isSpring = pollenMonth >= 2 && pollenMonth <= 4
+    if (isSpring && (forest?.trees.length ?? 0) > 0 && !isRaining) {
+      if (pollenDrift.length < 14 && Math.random() < 0.3) {
+        pollenDrift.push({
+          xf: Math.random() * width,
+          yf: SKY_ROWS + 1 + Math.random() * 3,
+          dx: (Math.random() - 0.3) * 0.35 + windStrength * 0.2,
+        })
+      }
+    } else if (!isSpring) {
+      pollenDrift = []
+    }
+    pollenDrift = pollenDrift.filter(p => p.xf >= 0 && p.xf < width && p.yf < SKY_ROWS + 6)
+    for (const p of pollenDrift) {
+      p.yf += 0.06
+      p.xf += p.dx + (Math.random() - 0.5) * 0.08
     }
     // Autumn leaf fall — leaves drift diagonally down from canopy
     const leafMonth = new Date().getMonth()
@@ -743,6 +766,20 @@ export async function viewer(): Promise<void> {
   }, 5 * 60 * 1000)
   // Set immediately on start
   ;(() => { const h = new Date().getHours(); morningDew = h >= 5 && h < 9 && !isRaining })()
+
+  // Spider webs: dawn/dusk between tree pairs, clear by mid-morning or if it rains
+  setInterval(() => {
+    const h = new Date().getHours()
+    const now = Date.now()
+    const isDawnDusk = (h >= 5 && h < 10) || (h >= 18 && h < 21)
+    spiderWebs = spiderWebs.filter(w => now < w.until && !isRaining)
+    if (isDawnDusk && !isRaining && spiderWebs.length < 3 && (forest?.trees.length ?? 0) >= 4 && Math.random() < 0.45) {
+      const w = process.stdout.columns || 80
+      const webX = Math.floor(Math.random() * (w - 15))
+      const span = 8 + Math.floor(Math.random() * 10)
+      spiderWebs.push({ x: webX, span, until: now + (1 + Math.random() * 3) * 60 * 60 * 1000 })
+    }
+  }, 8 * 60 * 1000)
 
   // Mushroom expiry tick: clean up expired ground mushrooms
   setInterval(() => {

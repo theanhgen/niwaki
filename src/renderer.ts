@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1329,6 +1329,44 @@ export function renderFrame(
             buffer[y]![sx] = { char: "·", color: lerpColor("#a080c0", "#d0a0d8", intensity) }
           }
         }
+      }
+    }
+  }
+
+  // 8k. Hard frost event — crystalline rime on canopy edges, ice needles on undergrowth
+  if (options.frost && options.frost.intensity > 0) {
+    const { intensity: fri, seed: fseed } = options.frost
+    // Rime crystals — tint exposed canopy edges toward icy blue-white
+    for (let x = 0; x < width; x++) {
+      for (let y = SKY_ROWS; y < groundStart - 1; y++) {
+        const cell = buffer[y]![x]
+        if (!cell?.color) continue
+        // Check if cell above is empty (exposed canopy top)
+        const above = y > 0 ? buffer[y - 1]![x] : null
+        const exposed = !above?.color
+        if (!exposed) continue
+        const h = hash(x * 53 + y * 31 + fseed + 77771)
+        if (h % 3 < Math.ceil(fri * 3)) {
+          buffer[y]![x] = { char: cell.char, color: lerpColor(cell.color, "#c8dff0", fri * 0.85) }
+        }
+      }
+    }
+    // Ice needles on undergrowth row
+    for (let x = 0; x < width; x++) {
+      const h = hash(x * 79 + fseed + 88881)
+      if (h % 3 === 0) {
+        const needleY = groundStart - 1
+        const existingCell = buffer[needleY]![x]
+        if (!existingCell?.color) {
+          buffer[needleY]![x] = { char: h % 2 === 0 ? "|" : "╷", color: lerpColor("#a0c8e0", "#d8eef8", (h & 15) / 15) }
+        }
+      }
+    }
+    // Sparkle on ground — tiny glints
+    for (let x = 0; x < width; x++) {
+      const h = hash(x * 61 + fseed + 99991)
+      if (h % 5 === 0) {
+        buffer[groundStart]![x] = { char: "·", color: lerpColor("#8ab0c8", "#d0e8f8", fri) }
       }
     }
   }

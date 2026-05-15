@@ -90,6 +90,7 @@ let drought: { intensity: number; fadingOut: boolean } | null = null
 let blowdown: { seed: number; fallen: { x: number; dir: 1 | -1 }[]; until: number } | null = null
 let blight: { zones: number[]; intensity: number; seed: number; fadingOut: boolean } | null = null
 let frostEvent: { intensity: number; seed: number; fadingOut: boolean } | null = null
+let lightningScars: { x: number; until: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -128,6 +129,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     blowdown: blowdown ? { seed: blowdown.seed, fallen: blowdown.fallen } : undefined,
     blight: blight ? { zones: blight.zones, intensity: blight.intensity, seed: blight.seed } : undefined,
     frost: frostEvent ? { intensity: frostEvent.intensity, seed: frostEvent.seed } : undefined,
+    lightningScars: lightningScars.length > 0 ? lightningScars.map(s => ({ x: s.x })) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -750,8 +752,14 @@ export async function viewer(): Promise<void> {
 
   // Lightning + dragonfly dart: 500ms tick
   setInterval(() => {
+    lightningScars = lightningScars.filter(s => Date.now() < s.until)
     if (isRaining && !animating && Math.random() < 0.03) {
       isLightning = true
+      // 12% chance lightning leaves a lasting scar on a random tree
+      if (Math.random() < 0.12 && (forest?.trees.length ?? 0) > 0) {
+        const struckTree = forest!.trees[Math.floor(Math.random() * forest!.trees.length)]!
+        lightningScars.push({ x: struckTree.x, until: Date.now() + (1.5 + Math.random() * 4) * 3600 * 1000 })
+      }
       renderForest(forest!, 0, activeMilestoneText)
       setTimeout(() => {
         isLightning = false

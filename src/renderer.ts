@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[] } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1367,6 +1367,27 @@ export function renderFrame(
       const h = hash(x * 61 + fseed + 99991)
       if (h % 5 === 0) {
         buffer[groundStart]![x] = { char: "·", color: lerpColor("#8ab0c8", "#d0e8f8", fri) }
+      }
+    }
+  }
+
+  // 8l. Lightning scars — char burn mark on struck trees, glows faintly at night
+  if (options.lightningScars && options.lightningScars.length > 0) {
+    for (const { x: sx } of options.lightningScars) {
+      if (sx < 0 || sx >= width) continue
+      // Find topmost occupied canopy cell in scar column
+      let scarY = -1
+      for (let y = SKY_ROWS; y < groundStart - 1; y++) {
+        if (buffer[y]![sx]?.color) { scarY = y; break }
+      }
+      if (scarY >= 0) {
+        const glowColor = (period === "night" || period === "dusk") ? "#c04010" : "#6a3010"
+        buffer[scarY]![sx] = { char: "↯", color: glowColor }
+        // Char streak down trunk below scar
+        for (let y = scarY + 1; y < Math.min(scarY + 3, groundStart - 1); y++) {
+          if (buffer[y]![sx]?.color)
+            buffer[y]![sx] = { char: "│", color: lerpColor("#6a3010", "#3a1808", (y - scarY) / 3) }
+        }
       }
     }
   }

@@ -136,6 +136,7 @@ let hare: { x: number; speed: number; frozen: boolean; frozenTimer: number } | n
 let raven: { xf: number; y: number; speed: number } | null = null
 let swallows: { xf: number; y: number; speed: number; dy: number }[] = []
 let redKite: { xf: number; y: number; speed: number; angle: number } | null = null
+let waxwings: { xf: number; y: number; speed: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -220,6 +221,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     raven: raven ? { x: Math.floor(raven.xf), y: raven.y } : undefined,
     swallows: swallows.length > 0 ? swallows.map(s => ({ x: Math.floor(s.xf), y: s.y })) : undefined,
     redKite: redKite ? { x: Math.floor(redKite.xf), y: redKite.y } : undefined,
+    waxwings: waxwings.length > 0 ? waxwings.map(w => ({ x: Math.floor(w.xf), y: w.y })) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -491,6 +493,9 @@ export async function viewer(): Promise<void> {
       redKite.y = Math.max(1, Math.min(SKY_ROWS - 2, 2 + Math.round(Math.sin(redKite.angle * 0.7) * 1.5)))
       if (redKite.xf > w + 8 || redKite.xf < -8) redKite = null
     }
+    // Waxwings — Bohemian berry-stripper flocks in winter; fast across canopy top
+    waxwings = waxwings.filter(w => w.xf > -4 && w.xf < (process.stdout.columns || 80) + 4)
+    for (const w of waxwings) { w.xf += w.speed }
     // Swallows — spring/summer aerial insect hunters; fast, swooping through canopy level
     swallows = swallows.filter(s => s.xf < (process.stdout.columns || 80) + 4)
     for (const s of swallows) {
@@ -1804,6 +1809,19 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleRedKiteSpawn()
+
+  // Waxwings — irruptive Scandinavian visitors in berry years; Nov-Feb; every 2-4 hours
+  setInterval(() => {
+    const m = new Date().getMonth()
+    if ((m < 10 && m > 1) || waxwings.length > 0) return
+    if (Math.random() > 0.3 || (forest?.trees.length ?? 0) < 5) return
+    const width = process.stdout.columns || 80
+    const count = 5 + Math.floor(Math.random() * 8)
+    const fromLeft = Math.random() < 0.5
+    for (let i = 0; i < count; i++) {
+      waxwings.push({ xf: fromLeft ? -2 - i * 2 : width + 2 + i * 2, y: SKY_ROWS, speed: fromLeft ? 2 : -2 })
+    }
+  }, (120 + Math.random() * 120) * 60 * 1000)
 
   // Swallows — arrive April-August; spawn in groups every 8-15 min during day
   setInterval(() => {

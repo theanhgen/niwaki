@@ -1053,6 +1053,52 @@ export function renderFrame(
     }
   }
 
+  // Post-rain canopy drip — drops fall from canopy edges into understory
+  if (options.postRain) {
+    const seed = options.twinkleSeed ?? 0
+    for (let x = 0; x < width; x++) {
+      for (let y = SKY_ROWS + 1; y < groundStart - 1; y++) {
+        if (!buffer[y]![x]?.color && buffer[y - 1]![x]?.color) {
+          if (hash(x * 19 + seed * 11 + 77771) % 6 === 0)
+            buffer[y]![x] = { char: "'", color: "#5898b8" }
+          break
+        }
+      }
+    }
+  }
+
+  // Stump moss — green cap on top of fallen stump sprites
+  for (const tree of forest.trees) {
+    if (tree.type !== "stump") continue
+    for (let y = SKY_ROWS; y < groundStart; y++) {
+      if (buffer[y]![tree.x]?.color) {
+        const mossY = y - 1
+        if (mossY >= SKY_ROWS && !buffer[mossY]![tree.x]?.color)
+          buffer[mossY]![tree.x] = { char: "░", color: "#4a7828" }
+        break
+      }
+    }
+  }
+
+  // Spring catkins — birch and willow dangle pale yellow-green °/∘ below canopy
+  if (season === "spring") {
+    for (const tree of forest.trees) {
+      if (tree.type !== "birch" && tree.type !== "willow") continue
+      if (tree.growth < 0.6) continue
+      for (let y = SKY_ROWS; y < groundStart - 2; y++) {
+        if (buffer[y]![tree.x]?.color && !buffer[y + 1]![tree.x]?.color) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const cx = tree.x + dx
+            if (cx < 0 || cx >= width) continue
+            if (!buffer[y + 1]![cx]?.color && hash(cx * 23 + tree.id * 7 + 33337) % 3 === 0)
+              buffer[y + 1]![cx] = { char: "°", color: "#b8c850" }
+          }
+          break
+        }
+      }
+    }
+  }
+
   // Autumn fallen leaves — more dense in wind
   if (season === "autumn") {
     const leafDensity = options.windStrength === 2 ? 5 : options.windStrength === 1 ? 7 : 9

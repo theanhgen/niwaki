@@ -135,6 +135,7 @@ let toadMigration: { toads: { x: number }[]; speed: number } | null = null
 let hare: { x: number; speed: number; frozen: boolean; frozenTimer: number } | null = null
 let raven: { xf: number; y: number; speed: number } | null = null
 let swallows: { xf: number; y: number; speed: number; dy: number }[] = []
+let redKite: { xf: number; y: number; speed: number; angle: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -218,6 +219,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     hare: hare ? { x: hare.x, frozen: hare.frozen, leftward: hare.speed < 0 } : undefined,
     raven: raven ? { x: Math.floor(raven.xf), y: raven.y } : undefined,
     swallows: swallows.length > 0 ? swallows.map(s => ({ x: Math.floor(s.xf), y: s.y })) : undefined,
+    redKite: redKite ? { x: Math.floor(redKite.xf), y: redKite.y } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -480,6 +482,14 @@ export async function viewer(): Promise<void> {
       raven.xf += raven.speed
       const w = process.stdout.columns || 80
       if (raven.xf > w + 8 || raven.xf < -8) raven = null
+    }
+    // Red kite — lazy thermal soaring; chestnut-red, forked tail; gentle elliptical drift
+    if (redKite) {
+      const w = process.stdout.columns || 80
+      redKite.angle += 0.03
+      redKite.xf += redKite.speed + Math.sin(redKite.angle) * 0.4
+      redKite.y = Math.max(1, Math.min(SKY_ROWS - 2, 2 + Math.round(Math.sin(redKite.angle * 0.7) * 1.5)))
+      if (redKite.xf > w + 8 || redKite.xf < -8) redKite = null
     }
     // Swallows — spring/summer aerial insect hunters; fast, swooping through canopy level
     swallows = swallows.filter(s => s.xf < (process.stdout.columns || 80) + 4)
@@ -1778,6 +1788,22 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleRavenSpawn()
+
+  // Red kite — reintroduced UK raptor; soars lazily spring to autumn; every 25-60 min
+  function scheduleRedKiteSpawn(): void {
+    const delay = (25 + Math.random() * 35) * 60 * 1000
+    setTimeout(() => {
+      const m = new Date().getMonth()
+      const h = new Date().getHours()
+      if (!redKite && m >= 2 && m <= 9 && h >= 8 && h < 19 && (forest?.trees.length ?? 0) >= 5 && Math.random() < 0.6) {
+        const width = process.stdout.columns || 80
+        const fromLeft = Math.random() < 0.5
+        redKite = { xf: fromLeft ? -3 : width + 3, y: 2, speed: fromLeft ? 0.7 : -0.7, angle: 0 }
+      }
+      scheduleRedKiteSpawn()
+    }, delay)
+  }
+  scheduleRedKiteSpawn()
 
   // Swallows — arrive April-August; spawn in groups every 8-15 min during day
   setInterval(() => {

@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -366,6 +366,16 @@ export function renderFrame(
     const skyColor = getSkyColor(y, period, blend)
     for (let x = 0; x < width; x++) {
       buffer[y]![x] = { char: "█", color: skyColor }
+    }
+  }
+
+  // Horizon glow — intensified warm band at sky base during dawn/dusk
+  if (period === "dawn" || period === "dusk") {
+    const glowColor = period === "dawn"
+      ? lerpColor("#6a2008", "#f09020", Math.min(1, blend * 1.5))
+      : lerpColor("#b83010", "#5a1008", blend)
+    for (let x = 0; x < width; x++) {
+      buffer[SKY_ROWS - 1]![x] = { char: "█", color: glowColor }
     }
   }
 
@@ -515,6 +525,17 @@ export function renderFrame(
         const shimmer = hash(sx * 53 + seed * 37 + 22222) % 2 === 0
         buffer[groundStart + 1]![sx] = { char: shimmer ? "≈" : "~", color: streamColor }
       }
+    }
+  }
+
+  // Stream fish — brief silver dart crossing the water
+  if (options.streamFish) {
+    const { x: fx, leftward } = options.streamFish
+    const fy = groundStart + 1
+    if (fx >= 0 && fx < width) {
+      buffer[fy]![fx] = { char: leftward ? "<" : ">", color: "#80c0d0" }
+      const tail = leftward ? fx + 1 : fx - 1
+      if (tail >= 0 && tail < width) buffer[fy]![tail] = { char: leftward ? ">" : "<", color: "#60a0b0" }
     }
   }
 
@@ -808,6 +829,20 @@ export function renderFrame(
     }
   }
 
+  // Moths — night only, pale cream specks drawn to moonlight in upper canopy
+  if (period === "night") {
+    const seed = options.twinkleSeed ?? 0
+    const count = Math.max(2, Math.floor(width * 0.04))
+    for (let i = 0; i < count; i++) {
+      const h = hash(i * 59 + seed * 103 + 9876)
+      const x = h % width
+      const y = SKY_ROWS + (hash(h + 17) % Math.floor(TREE_ROWS * 0.65))
+      if (buffer[y]![x]?.color !== null) continue
+      const colors = ["#d8d0c0", "#c8c0b0", "#e8e0d0"] as const
+      buffer[y]![x] = { char: "·", color: colors[h % 3]! }
+    }
+  }
+
   // 8c. Rain drops — angled by wind strength
   if (options.isRaining) {
     const seed = options.twinkleSeed ?? 0
@@ -911,6 +946,14 @@ export function renderFrame(
   )
 
   return lines.join("\n")
+}
+
+export function getStreamBounds(forest: Forest, termWidth: number): { x: number; w: number } | null {
+  if (forest.trees.length < 10) return null
+  const width = Math.max(40, termWidth)
+  const createdSeed = forest.createdAt.slice(0, 10).split("").reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
+  const x = Math.floor(width * 0.15 + hash(createdSeed * 13 + 77) % Math.floor(width * 0.65))
+  return { x, w: 14 + hash(x * 7 + 88) % 8 }
 }
 
 // ── buildScene ───────────────────────────────────────────────────────────────

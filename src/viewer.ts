@@ -1,6 +1,6 @@
 import fs, { type FSWatcher } from "node:fs"
 
-import { renderFrame } from "./renderer.js"
+import { renderFrame, getStreamBounds } from "./renderer.js"
 import { getForestFile, readForest, writeForest } from "./state.js"
 
 function writeAnsi(code: string): void {
@@ -75,6 +75,7 @@ let meteorShower = false
 let meteorShowerUntil = 0
 let heron: { x: number } | null = null
 let dragonfly: { x: number; y: number } | null = null
+let streamFish: { x: number; leftward: boolean } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -98,6 +99,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     squirrel: squirrel ?? undefined,
     heron: heron ?? undefined,
     dragonfly: dragonfly ?? undefined,
+    streamFish: streamFish ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -171,6 +173,12 @@ export async function viewer(): Promise<void> {
     shootingStarTrail = shootingStarTrail
       .map((p) => ({ x: p.x + 2, y: p.y + 1 }))
       .filter((p) => p.y < 4 && p.x < width)
+    // Stream fish swims 1 col per tick, clears when out of stream
+    if (streamFish) {
+      streamFish.x += streamFish.leftward ? -1 : 1
+      const bounds = getStreamBounds(forest!, width)
+      if (!bounds || streamFish.x < bounds.x - 3 || streamFish.x > bounds.x + bounds.w + 3) streamFish = null
+    }
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
 
@@ -372,6 +380,25 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleDragonflySpawn()
+
+  // Stream fish: every 3-8 min, swims across in ~4s, spring/summer/autumn only
+  function scheduleStreamFish(): void {
+    const delay = (3 + Math.random() * 5) * 60 * 1000
+    setTimeout(() => {
+      const m = new Date().getMonth()
+      const isFrozen = m <= 1 || m === 11
+      if (!isFrozen && !isRaining && !streamFish) {
+        const width = process.stdout.columns || 80
+        const bounds = getStreamBounds(forest!, width)
+        if (bounds) {
+          const leftward = Math.random() < 0.5
+          streamFish = { x: leftward ? bounds.x + bounds.w + 2 : bounds.x - 2, leftward }
+        }
+      }
+      scheduleStreamFish()
+    }, delay)
+  }
+  scheduleStreamFish()
 
   // Lightning + dragonfly dart: 500ms tick
   setInterval(() => {

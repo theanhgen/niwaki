@@ -99,6 +99,9 @@ let spiderWebs: { x: number; span: number; until: number }[] = []
 let snail: { xf: number; tickCount: number } | null = null
 let caterpillar: { segments: number[]; dir: 1 | -1; tickCount: number } | null = null
 let otter: { x: number; diving: boolean; diveTimer: number } | null = null
+let berries: { x: number; color: string }[] = []
+let mossPatch = false
+let seedDrift: { xf: number; yf: number; dx: number; char: string }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -146,6 +149,9 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     snail: snail ? { x: Math.floor(snail.xf) } : undefined,
     caterpillar: caterpillar ? { segments: caterpillar.segments, dir: caterpillar.dir } : undefined,
     otter: otter ? { x: otter.x, diving: otter.diving } : undefined,
+    berries: berries.length > 0 ? berries : undefined,
+    mossPatch: mossPatch || undefined,
+    seedDrift: seedDrift.length > 0 ? seedDrift.map(s => ({ x: Math.floor(s.xf), y: Math.floor(s.yf), char: s.char })) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -278,6 +284,25 @@ export async function viewer(): Promise<void> {
     for (const l of fallingLeaves) {
       l.yf += 0.18
       l.xf += l.dx + (Math.random() - 0.5) * 0.12
+    }
+    // Seed drift — maple helicopters and dandelion fluff spin through mid-canopy
+    const seedMonth = new Date().getMonth()
+    const isSeedSeason = seedMonth >= 3 && seedMonth <= 9
+    if (isSeedSeason && (forest?.trees.length ?? 0) > 0 && !isRaining) {
+      const seedChars = ["⟨", "⟩", "·", "◌"]
+      if (seedDrift.length < 10 && Math.random() < 0.15) {
+        seedDrift.push({
+          xf: Math.random() * width,
+          yf: SKY_ROWS + 2 + Math.random() * 3,
+          dx: (Math.random() - 0.5) * 0.5 + windStrength * 0.3,
+          char: seedChars[Math.floor(Math.random() * seedChars.length)]!,
+        })
+      }
+    } else if (!isSeedSeason) seedDrift = []
+    seedDrift = seedDrift.filter(s => s.xf > -2 && s.xf < width + 2 && s.yf < SKY_ROWS + 7)
+    for (const s of seedDrift) {
+      s.yf += 0.12
+      s.xf += s.dx
     }
     // Snail — moves 1 char every 8 ticks (~2s), clears when off-screen
     if (snail) {
@@ -863,6 +888,37 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleOtter()
+
+  // Berry clusters: summer/autumn, stable ground feature, refresh each season
+  setInterval(() => {
+    const m = new Date().getMonth()
+    const isBerryTime = m >= 6 && m <= 10
+    if (isBerryTime && berries.length < 8 && (forest?.trees.length ?? 0) >= 5) {
+      const w = process.stdout.columns || 80
+      const berryColors = m <= 8
+        ? ["#c03050", "#8020a0", "#d06020"]  // summer: wild strawberry, blueberry, cloudberry
+        : ["#902020", "#601880", "#c04818"]  // autumn: rose hip, elderberry, rowan
+      berries.push({ x: Math.floor(Math.random() * w), color: berryColors[Math.floor(Math.random() * berryColors.length)]! })
+    } else if (!isBerryTime) {
+      berries = []
+    }
+  }, 10 * 60 * 1000)
+  ;(() => {
+    const m = new Date().getMonth()
+    if (m >= 6 && m <= 10) {
+      const w = process.stdout.columns || 80
+      const berryColors = ["#c03050", "#8020a0", "#d06020"]
+      for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++)
+        berries.push({ x: Math.floor(Math.random() * w), color: berryColors[Math.floor(Math.random() * berryColors.length)]! })
+    }
+  })()
+
+  // Moss: present in damp conditions after rain or in autumn/winter
+  setInterval(() => {
+    const m = new Date().getMonth()
+    const isDamp = isRaining || m >= 8 || (m >= 0 && m <= 3)
+    mossPatch = isDamp
+  }, 3 * 60 * 1000)
 
   // Mushroom expiry tick: clean up expired ground mushrooms
   setInterval(() => {

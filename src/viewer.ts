@@ -130,6 +130,7 @@ let titFlock: { x: number; y: number; speed: number }[] = []
 let goldfinch: { x: number; speed: number; pauseTimer: number } | null = null
 let barnOwl: { xf: number; y: number; speed: number; until: number } | null = null
 let slug: { xf: number; tickCount: number } | null = null
+let snake: { x: number; speed: number; basking: boolean; baskTimer: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -208,6 +209,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     goldfinch: goldfinch ? { x: goldfinch.x, paused: goldfinch.pauseTimer > 0 } : undefined,
     barnOwl: barnOwl ? { x: Math.floor(barnOwl.xf), y: barnOwl.y } : undefined,
     slug: slug ? { x: Math.floor(slug.xf) } : undefined,
+    snake: snake ? { x: snake.x, basking: snake.basking } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -700,6 +702,21 @@ export async function viewer(): Promise<void> {
         if (threatened && Math.random() < 0.4) { hedgehog.rolled = true; hedgehog.rollTimer = 8 + Math.floor(Math.random() * 10) }
         else hedgehog.x += hedgehog.speed
       }
+    }
+    // Adder/grass snake — basks in sun, slowly moves when disturbed
+    if (snake) {
+      const w = process.stdout.columns || 80
+      if (snake.basking) {
+        snake.baskTimer--
+        if (snake.baskTimer <= 0) { snake.basking = false; snake.baskTimer = 0 }
+        // Disturb if predator nearby
+        if (foxes.some(f => Math.abs(f.x - snake!.x) < 5) || badger !== null)
+          snake.basking = false
+      } else {
+        snake.x += snake.speed
+        if (Math.random() < 0.08) { snake.basking = true; snake.baskTimer = 15 + Math.floor(Math.random() * 20) }
+      }
+      if (snake.x > w + 4 || snake.x < -4) snake = null
     }
     // Slug — extremely slow ground mover; emerges after rain, leaves slime trail
     if (slug) {
@@ -1602,6 +1619,24 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleBarnOwlSpawn()
+
+  // Adder/grass snake — basks in sunny clearings; spring-autumn afternoons every 30-60 min
+  function scheduleSnakeSpawn(): void {
+    const delay = (30 + Math.random() * 30) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const m = new Date().getMonth()
+      const isSunny = h >= 11 && h <= 16
+      const isSeason = m >= 3 && m <= 9 // Apr-Oct
+      if (isSunny && isSeason && !snake && !isRaining && (forest?.trees.length ?? 0) >= 5) {
+        const width = process.stdout.columns || 80
+        snake = { x: Math.floor(width * 0.2 + Math.random() * width * 0.6), speed: Math.random() < 0.5 ? 1 : -1, basking: true, baskTimer: 20 + Math.floor(Math.random() * 30) }
+        setTimeout(() => { snake = null }, (10 + Math.random() * 15) * 60 * 1000)
+      }
+      scheduleSnakeSpawn()
+    }, delay)
+  }
+  scheduleSnakeSpawn()
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

@@ -119,6 +119,7 @@ let vole: { x: number; speed: number } | null = null
 let kestrel: { x: number; y: number; hoverTimer: number; until: number } | null = null
 let hedgehog: { x: number; speed: number; rolled: boolean; rollTimer: number } | null = null
 let salamander: { x: number; speed: number; tickCount: number } | null = null
+let jay: { x: number; speed: number; carrying: boolean } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -186,6 +187,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     kestrel: kestrel ? { x: kestrel.x, y: kestrel.y } : undefined,
     hedgehog: hedgehog ? { x: hedgehog.x, rolled: hedgehog.rolled } : undefined,
     salamander: salamander ? { x: salamander.x } : undefined,
+    jay: jay ? { x: jay.x, carrying: jay.carrying, leftward: jay.speed < 0 } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -643,6 +645,13 @@ export async function viewer(): Promise<void> {
         if (Math.random() < 0.7) salamander.x += salamander.speed
       }
       if (salamander.x > (process.stdout.columns || 80) + 3) salamander = null
+    }
+    // Jay — quick hopping ground bird, drops acorn when carrying
+    if (jay) {
+      const w = process.stdout.columns || 80
+      jay.x += jay.speed
+      if (jay.carrying && Math.random() < 0.05) jay.carrying = false
+      if (jay.x > w + 3 || jay.x < -3) jay = null
     }
   }, 400)
 
@@ -1310,6 +1319,24 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleHedgehogSpawn()
+
+  // Jay — colourful corvid, acorn collector, active in autumn during day
+  function scheduleJaySpawn(): void {
+    const delay = (15 + Math.random() * 30) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const m = new Date().getMonth()
+      const isDay = h >= 7 && h < 19
+      const isAutumn = m >= 8 && m <= 10
+      if (isDay && isAutumn && !jay && (forest?.trees.length ?? 0) >= 5) {
+        const width = process.stdout.columns || 80
+        jay = { x: Math.random() < 0.5 ? -2 : width + 2, speed: Math.random() < 0.5 ? 1 : -1, carrying: Math.random() < 0.5 }
+        setTimeout(() => { jay = null }, (3 + Math.random() * 8) * 60 * 1000)
+      }
+      scheduleJaySpawn()
+    }, delay)
+  }
+  scheduleJaySpawn()
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

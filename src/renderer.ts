@@ -629,11 +629,17 @@ export function renderFrame(
         const isIce = hash(sx * 31 + 33333) % 2 === 0
         buffer[groundStart + 1]![sx] = isIce ? { char: "─", color: "#a8c0d0" } : { char: "~", color: "#3a5878" }
       } else {
-        const starReflect = period === "night" && hash(sx * 41 + seed * 23 + 11111) % 5 === 0
+        const isFullMoon = moonPhase > 0.44 && moonPhase < 0.56
+        const isNightPeriod = period === "night"
+        const streamMid = streamX + Math.floor(streamW / 2)
+        const moonReflect = isFullMoon && isNightPeriod && Math.abs(sx - streamMid) <= 1
+        const starReflect = isNightPeriod && hash(sx * 41 + seed * 23 + 11111) % 5 === 0
         const shimmer = hash(sx * 53 + seed * 37 + 22222) % 2 === 0
-        buffer[groundStart + 1]![sx] = starReflect
-          ? { char: "·", color: "#5070a0" }
-          : { char: shimmer ? "≈" : "~", color: streamColor }
+        buffer[groundStart + 1]![sx] = moonReflect
+          ? { char: "◉", color: lerpColor("#5070a0", "#d8c870", 0.7) }
+          : starReflect
+            ? { char: "·", color: "#5070a0" }
+            : { char: shimmer ? "≈" : "~", color: streamColor }
       }
     }
   }
@@ -1037,6 +1043,14 @@ export function renderFrame(
     if (variant < 4) buffer[undergrowthY]![x] = parts[variant]!
   }
 
+  // Lichen patches — ancient forest floors, slow colonizers on bare ground
+  if (forest.trees.length >= 30) {
+    for (let x = 0; x < width; x++) {
+      if (buffer[groundStart]![x]?.char === "█" && hash(x * 53 + forest.trees.length * 11 + 44449) % 9 === 0)
+        buffer[groundStart]![x] = { char: "≋", color: lerpColor(biome.ground[0]!, "#7a9858", 0.4) }
+    }
+  }
+
   // Deep shade ferns — grow under dense canopy in damp seasons (spring/summer/autumn)
   if (season !== "winter" && forest.trees.length >= 12) {
     for (let x = 0; x < width; x++) {
@@ -1152,6 +1166,19 @@ export function renderFrame(
       if (buffer[ly]![x]?.color !== null) continue
       const leafColors = ["#c4701a", "#e8a020", "#d45010"] as const
       buffer[ly]![x] = { char: "·", color: leafColors[h % 3]! }
+    }
+  }
+
+  // Dandelion seeds — spring, ∘ wisps drifting high through the sky, animated
+  if (season === "spring" && forest.trees.length >= 5 && !options.isRaining) {
+    const seed = options.twinkleSeed ?? 0
+    const count = Math.max(2, Math.floor(width * 0.03))
+    for (let i = 0; i < count; i++) {
+      const h = hash(i * 71 + seed * 43 + 33339)
+      const x = (hash(i * 71 + 33331) + Math.floor(seed * 0.3)) % width
+      const y = 1 + (h % (SKY_ROWS - 2))
+      if (buffer[y]![x]?.color !== null) continue
+      buffer[y]![x] = { char: "∘", color: lerpColor("#e8e8c0", "#f0f0d8", (h % 10) / 10) }
     }
   }
 

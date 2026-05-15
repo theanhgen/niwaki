@@ -128,6 +128,7 @@ let pheasant: { x: number; speed: number; flushed: boolean } | null = null
 let sparrowhawk: { xf: number; speed: number; y: number } | null = null
 let titFlock: { x: number; y: number; speed: number }[] = []
 let goldfinch: { x: number; speed: number; pauseTimer: number } | null = null
+let barnOwl: { xf: number; y: number; speed: number; until: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -204,6 +205,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     sparrowhawk: sparrowhawk ? { x: Math.floor(sparrowhawk.xf), y: sparrowhawk.y, leftward: sparrowhawk.speed < 0 } : undefined,
     titFlock: titFlock.length > 0 ? titFlock.map(t => ({ x: t.x, y: t.y })) : undefined,
     goldfinch: goldfinch ? { x: goldfinch.x, paused: goldfinch.pauseTimer > 0 } : undefined,
+    barnOwl: barnOwl ? { x: Math.floor(barnOwl.xf), y: barnOwl.y } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -421,6 +423,12 @@ export async function viewer(): Promise<void> {
       if (moth.x >= width) moth.dx = -Math.abs(moth.dx)
       if (moth.y < SKY_ROWS + 1) moth.dy = Math.abs(moth.dy) * 0.5
       if (moth.y > SKY_ROWS + 5) moth.dy = -Math.abs(moth.dy) * 0.5
+    }
+    // Barn owl — silent gliding ghost at night
+    if (barnOwl) {
+      barnOwl.xf += barnOwl.speed
+      barnOwl.y = Math.max(SKY_ROWS - 1, Math.min(SKY_ROWS + 4, barnOwl.y + (Math.random() < 0.2 ? (Math.random() < 0.5 ? 1 : -1) : 0)))
+      if (Date.now() > barnOwl.until || barnOwl.xf > (process.stdout.columns || 80) + 5 || barnOwl.xf < -5) barnOwl = null
     }
     // Goldfinch — bright finch on seed heads; hops then pauses
     if (goldfinch) {
@@ -1557,6 +1565,27 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleGoldfinchSpawn()
+
+  // Barn owl — ghostly white glider at dusk/night; every 30-60 min when active
+  function scheduleBarnOwlSpawn(): void {
+    const delay = (30 + Math.random() * 30) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isActive = h >= 19 || h < 5
+      if (isActive && !barnOwl && (forest?.trees.length ?? 0) >= 5) {
+        const w = process.stdout.columns || 80
+        const goLeft = Math.random() < 0.5
+        barnOwl = {
+          xf: goLeft ? w + 3 : -3,
+          y: SKY_ROWS,
+          speed: goLeft ? -1.5 : 1.5,
+          until: Date.now() + (4 + Math.random() * 8) * 60 * 1000
+        }
+      }
+      scheduleBarnOwlSpawn()
+    }, delay)
+  }
+  scheduleBarnOwlSpawn()
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

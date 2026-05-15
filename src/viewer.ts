@@ -134,6 +134,7 @@ let snake: { x: number; speed: number; basking: boolean; baskTimer: number } | n
 let toadMigration: { toads: { x: number }[]; speed: number } | null = null
 let hare: { x: number; speed: number; frozen: boolean; frozenTimer: number } | null = null
 let raven: { xf: number; y: number; speed: number } | null = null
+let swallows: { xf: number; y: number; speed: number; dy: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -216,6 +217,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     toadMigration: toadMigration ? toadMigration.toads : undefined,
     hare: hare ? { x: hare.x, frozen: hare.frozen, leftward: hare.speed < 0 } : undefined,
     raven: raven ? { x: Math.floor(raven.xf), y: raven.y } : undefined,
+    swallows: swallows.length > 0 ? swallows.map(s => ({ x: Math.floor(s.xf), y: s.y })) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -478,6 +480,13 @@ export async function viewer(): Promise<void> {
       raven.xf += raven.speed
       const w = process.stdout.columns || 80
       if (raven.xf > w + 8 || raven.xf < -8) raven = null
+    }
+    // Swallows — spring/summer aerial insect hunters; fast, swooping through canopy level
+    swallows = swallows.filter(s => s.xf < (process.stdout.columns || 80) + 4)
+    for (const s of swallows) {
+      s.xf += s.speed
+      s.y = Math.max(SKY_ROWS - 3, Math.min(SKY_ROWS + 1, s.y + s.dy))
+      if (Math.random() < 0.3) s.dy = Math.random() < 0.5 ? -1 : 1
     }
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
@@ -1769,6 +1778,19 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleRavenSpawn()
+
+  // Swallows — arrive April-August; spawn in groups every 8-15 min during day
+  setInterval(() => {
+    const m = new Date().getMonth()
+    const h = new Date().getHours()
+    if (m < 3 || m > 8) return // April-Sept only
+    if (h < 7 || h > 20) return
+    if (swallows.length > 0) return
+    const count = 3 + Math.floor(Math.random() * 4)
+    for (let i = 0; i < count; i++) {
+      swallows.push({ xf: -2 - i * 3, y: SKY_ROWS - 2 + Math.floor(Math.random() * 3), speed: 2.5 + Math.random(), dy: 0 })
+    }
+  }, (8 + Math.random() * 7) * 60 * 1000)
 
   // Ground fog: cool mornings in spring/autumn, check every 5 min
   setInterval(() => {

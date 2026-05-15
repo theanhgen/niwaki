@@ -105,6 +105,7 @@ let seedDrift: { xf: number; yf: number; dx: number; char: string }[] = []
 let badger: { x: number; speed: number } | null = null
 let kingfisher: { x: number; diving: boolean; diveTimer: number; until: number } | null = null
 let boar: { x: number; speed: number; rootingTimer: number } | null = null
+let dawnChorus: { x: number; y: number; life: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -158,6 +159,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     badger: badger ? { x: badger.x } : undefined,
     kingfisher: kingfisher ? { x: kingfisher.x, diving: kingfisher.diving } : undefined,
     boar: boar ? { x: boar.x, rooting: boar.rootingTimer > 0 } : undefined,
+    dawnChorus: dawnChorus.length > 0 ? dawnChorus : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -1114,6 +1116,15 @@ export async function viewer(): Promise<void> {
         x: Math.max(0, Math.min(width - 1, anchor.x + Math.floor(Math.random() * 7) - 3)),
         y: Math.max(11 - 3, Math.min(11 - 1, anchor.y + (Math.random() < 0.5 ? -1 : 1))),
       }
+    }
+    // Dawn chorus — musical notes float up from trees in early morning
+    const chorusH = new Date().getHours()
+    const isChorusTime = chorusH >= 5 && chorusH < 7
+    dawnChorus = dawnChorus.map(n => ({ ...n, y: n.y - 1, life: n.life - 1 })).filter(n => n.life > 0 && n.y >= 0)
+    if (isChorusTime && (forest?.trees.length ?? 0) > 0 && Math.random() < 0.4) {
+      const width = process.stdout.columns || 80
+      const tree = forest!.trees[Math.floor(Math.random() * forest!.trees.length)]!
+      dawnChorus.push({ x: Math.min(width - 1, tree.x + Math.floor(Math.random() * 5) - 2), y: SKY_ROWS, life: 7 + Math.floor(Math.random() * 5) })
     }
   }, 500)
 

@@ -1438,6 +1438,40 @@ export async function viewer(): Promise<void> {
   }
   scheduleWrenSpawn()
 
+  // Pine marten — rare arboreal predator dashing through canopy; every 2-4h, dusk/dawn
+  function schedulePineMartenSpawn(): void {
+    const delay = (120 + Math.random() * 120) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isCrepuscular = (h >= 5 && h < 8) || (h >= 18 && h < 21)
+      if (isCrepuscular && !pineMarten && (forest?.trees.length ?? 0) >= 10) {
+        const width = process.stdout.columns || 80
+        const goLeft = Math.random() < 0.5
+        pineMarten = { x: goLeft ? width + 2 : -2, y: SKY_ROWS + 2, speed: goLeft ? -2 : 2 }
+        setTimeout(() => { pineMarten = null }, (2 + Math.random() * 4) * 60 * 1000)
+      }
+      schedulePineMartenSpawn()
+    }, delay)
+  }
+  schedulePineMartenSpawn()
+
+  // Pheasant — slow ground bird, springs from cover when startled; every 20-40 min, daytime
+  function schedulePheasantSpawn(): void {
+    const delay = (20 + Math.random() * 20) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isDay = h >= 8 && h < 18
+      const m = new Date().getMonth()
+      const notDeepWinter = m !== 0 && m !== 1
+      if (isDay && notDeepWinter && !pheasant && (forest?.trees.length ?? 0) >= 5) {
+        pheasant = { x: -2, speed: 1, flushed: false }
+        setTimeout(() => { pheasant = null }, (8 + Math.random() * 12) * 60 * 1000)
+      }
+      schedulePheasantSpawn()
+    }, delay)
+  }
+  schedulePheasantSpawn()
+
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {
     const delay = (120 + Math.random() * 120) * 60 * 1000

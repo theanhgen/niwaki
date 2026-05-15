@@ -86,6 +86,7 @@ let clouds: { xf: number; y: number; width: number; density: 0|1|2 }[] = []
 let crows: { x: number; speed: number; pecking: boolean; peckTimer: number }[] = []
 let wildfire: { x: number; width: number; stage: string; until: number } | null = null
 let beetles: { treePositions: { x: number; radius: number }[]; intensity: number; peakReached: boolean } | null = null
+let drought: { intensity: number; fadingOut: boolean } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -120,6 +121,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     crows: crows.length > 0 ? crows.map(c => ({ x: c.x, pecking: c.pecking })) : undefined,
     wildfire: wildfire ? { x: wildfire.x, width: wildfire.width, stage: wildfire.stage, seed: twinkleSeed } : undefined,
     beetles: beetles ? { zones: beetles.treePositions, intensity: beetles.intensity } : undefined,
+    drought: drought ? { intensity: drought.intensity } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -590,6 +592,28 @@ export async function viewer(): Promise<void> {
       beetles = { treePositions: [{ x: seed.x, radius: 5 }], intensity: 0.1, peakReached: false }
     }
   }, 60 * 1000)
+
+  // Drought: builds slowly in summer, dries ground + stream, rain ends it
+  setInterval(() => {
+    const m = new Date().getMonth()
+    const isSummer = m >= 5 && m <= 8
+    if (drought) {
+      if (isRaining || drought.fadingOut) {
+        drought.intensity = Math.max(0, drought.intensity - 0.06)
+        drought.fadingOut = true
+        if (drought.intensity <= 0) drought = null
+      } else {
+        drought.intensity = Math.min(1.0, drought.intensity + 0.015)
+        if (drought.intensity >= 1.0) {
+          // Peak — schedule fade-out after 20-45 min
+          drought.fadingOut = false
+          setTimeout(() => { if (drought) drought.fadingOut = true }, (20 + Math.random() * 25) * 60 * 1000)
+        }
+      }
+    } else if (isSummer && !isRaining && !wildfire && Math.random() < 0.0012) {
+      drought = { intensity: 0.05, fadingOut: false }
+    }
+  }, 3 * 60 * 1000)
 
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn
   setInterval(() => {

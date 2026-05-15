@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1207,6 +1207,45 @@ export function renderFrame(
             if (cell?.color) buffer[midY]![cx] = { char: "·", color: lerpColor("#7a5a28", "#3a2810", intensity) }
           }
         }
+      }
+    }
+  }
+
+  // 8h. Drought — cracked earth, dried stream, heat haze
+  if (options.drought && options.drought.intensity > 0) {
+    const dri = options.drought.intensity
+    // Cracked ground — overwrite ground tiles with dry earth pattern
+    for (let x = 0; x < width; x++) {
+      const h = hash(x * 59 + 77771)
+      const crackChars = ["╌", "·", " ", "╌", "·", "·", " ", "╌"]
+      const crackChar = crackChars[h % crackChars.length]!
+      const groundColor = lerpColor("#6a5840", "#9a8060", (h % 16) / 16)
+      if (dri > 0.3) {
+        buffer[groundStart]![x] = { char: crackChar, color: lerpColor("#6a5840", groundColor, dri) }
+      }
+    }
+    // Dried stream bed — sandy/rocky when drought peaks
+    if (dri > 0.5 && forest.trees.length >= 10) {
+      const createdSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+      const streamX = Math.floor(width * 0.15 + hash(createdSeed * 13 + 77) % Math.floor(width * 0.65))
+      const streamW = 14 + hash(streamX * 7 + 88) % 8
+      for (let i = 0; i < streamW; i++) {
+        const sx = streamX + i
+        if (sx < 0 || sx >= width) continue
+        const h = hash(sx * 71 + 88881)
+        const bedChars = ["_", ".", "─", "_", ".", " ", "_"]
+        buffer[groundStart + 1]![sx] = { char: bedChars[h % bedChars.length]!, color: lerpColor("#7a6850", "#a08060", dri) }
+      }
+    }
+    // Heat haze — warm yellowish tint on bottom sky row
+    for (let x = 0; x < width; x++) {
+      const hazeY = SKY_ROWS - 1
+      const cell = buffer[hazeY]![x]
+      if (cell && !cell.color) continue
+      const h = hash(x * 83 + 11119)
+      if (h % 5 < 2) {
+        const hazeColor = lerpColor(getSkyColor(hazeY, period, blend), "#c8a040", dri * 0.35)
+        buffer[hazeY]![x] = { char: "░", color: hazeColor }
       }
     }
   }

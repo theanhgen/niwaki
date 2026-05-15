@@ -116,6 +116,7 @@ let moleHills: { x: number; until: number }[] = []
 let murmuration: { x: number; y: number; dx: number; seed: number; until: number } | null = null
 let mayflyHatch: { until: number } | null = null
 let vole: { x: number; speed: number } | null = null
+let kestrel: { x: number; y: number; hoverTimer: number; until: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -180,6 +181,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     murmuration: murmuration ? { x: murmuration.x, y: murmuration.y, seed: murmuration.seed } : undefined,
     mayflyHatch: mayflyHatch ? true : undefined,
     vole: vole ? { x: vole.x } : undefined,
+    kestrel: kestrel ? { x: kestrel.x, y: kestrel.y } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -543,10 +545,13 @@ export async function viewer(): Promise<void> {
         weasel.y = 12 + Math.round(Math.sin(weasel.x * 0.3) * 0.5 + 0.5)
       }
     }
-    // Crows: walk slowly, occasionally stop to peck
+    // Crows: walk slowly, occasionally stop to peck; alarm when fox/hawk nearby
     crows = crows.filter(c => c.x <= (process.stdout.columns || 80) + 3)
+    const predatorNearby = foxes.some(f => Math.abs(f.x - crows[0]?.x!) < 15) || !!hawk || !!kestrel
     for (const c of crows) {
-      if (c.pecking) {
+      if (predatorNearby && !c.pecking) {
+        // Alarm: pause and face threat (stop moving)
+      } else if (c.pecking) {
         c.peckTimer--
         if (c.peckTimer <= 0) c.pecking = false
       } else {
@@ -581,6 +586,18 @@ export async function viewer(): Promise<void> {
       } else if (!kingfisher.diving && Math.random() < 0.05) {
         kingfisher.diving = true
         kingfisher.diveTimer = 2 + Math.floor(Math.random() * 4)
+      }
+    }
+    // Kestrel — hovers stationary in sky then dashes forward
+    if (kestrel) {
+      const now = Date.now()
+      if (now > kestrel.until) { kestrel = null }
+      else if (kestrel.hoverTimer > 0) {
+        kestrel.hoverTimer--  // stationary hover
+      } else {
+        kestrel.x += 2  // dash after prey
+        if (Math.random() < 0.3) kestrel.hoverTimer = 3 + Math.floor(Math.random() * 5)
+        if (kestrel.x > (process.stdout.columns || 80) + 4) kestrel = null
       }
     }
     // Raccoon — shuffles toward stream, pauses to "wash" food
@@ -635,6 +652,20 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleHawkSpawn()
+
+  // Kestrel — hovers in sky hunting voles, every 30-60 min, day only
+  function scheduleKestrelSpawn(): void {
+    const delay = (30 + Math.random() * 30) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      if (h >= 8 && h < 18 && !kestrel && !hawk) {
+        const width = process.stdout.columns || 80
+        kestrel = { x: -2, y: 1 + Math.floor(Math.random() * 3), hoverTimer: 4, until: Date.now() + (5 + Math.random() * 8) * 60 * 1000 }
+      }
+      scheduleKestrelSpawn()
+    }, delay)
+  }
+  scheduleKestrelSpawn()
 
   // Squirrel spawn: mornings and afternoons, every 10-25 min, dash-pause behavior
   function scheduleSquirrelSpawn(): void {

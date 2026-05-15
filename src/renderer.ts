@@ -887,6 +887,33 @@ export function renderFrame(
     }
   }
 
+  // Pine cone litter — autumn/winter, `▼` cones scattered under conifer trees
+  if (season === "autumn" || season === "winter") {
+    const conifers2 = new Set(["pine", "araucaria", "eucalyptus"])
+    for (const tree of forest.trees) {
+      if (!conifers2.has(tree.type) || tree.growth < 0.5) continue
+      for (let dx = -4; dx <= 4; dx++) {
+        const cx = tree.x + dx
+        if (cx < 0 || cx >= width) continue
+        if (hash(cx * 53 + tree.id * 29 + 88881) % 5 !== 0) continue
+        if (!buffer[groundStart]![cx]?.color)
+          buffer[groundStart]![cx] = { char: "▼", color: "#6a4820" }
+      }
+    }
+  }
+
+  // Bat roost — daytime, sleeping bat `⊃` visible in ancient hollow tree
+  if (period === "day" && forest.trees.length >= 25) {
+    for (const tree of forest.trees) {
+      if (tree.growth < 1.0 || tree.type === "stump") continue
+      if (hash(tree.id * 97 + 88887) % 8 !== 0) continue // only some trees have roosts
+      const roostX = tree.x
+      const roostY = groundStart - 4
+      if (roostY >= SKY_ROWS && !buffer[roostY]![roostX]?.color)
+        buffer[roostY]![roostX] = { char: "⊃", color: "#3a2828" }
+    }
+  }
+
   // Icicles — winter, drip from low branches onto snow; pale ice-blue hanging spikes
   if (season === "winter" && !options.isRaining) {
     for (const tree of forest.trees) {
@@ -961,6 +988,19 @@ export function renderFrame(
       if (sx < 0 || sx >= width) continue
       if (hash(sx * 31 + 99991) % 3 === 0)
         buffer[groundStart]![sx] = { char: "░", color: lerpColor("#c0c8d0", "#a8b8c8", hash(sx * 17 + 44443) % 10 / 10) }
+    }
+  }
+
+  // Water crowfoot — white floating flowers on stream surface in summer; `○` on water
+  if (season === "summer" && forest.trees.length >= 10 && !options.isRaining) {
+    const wcSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const wcStreamX = Math.floor(width * 0.15 + hash(wcSeed * 13 + 77) % Math.floor(width * 0.65))
+    const wcStreamW = 14 + hash(wcStreamX * 7 + 88) % 8
+    for (let i = 2; i < wcStreamW - 2; i++) {
+      const sx = wcStreamX + i
+      if (sx < 0 || sx >= width) continue
+      if (hash(sx * 43 + wcSeed + 55553) % 7 === 0)
+        buffer[groundStart + 1]![sx] = { char: "○", color: "#f0f0e8" }
     }
   }
 

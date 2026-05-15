@@ -120,6 +120,7 @@ let kestrel: { x: number; y: number; hoverTimer: number; until: number } | null 
 let hedgehog: { x: number; speed: number; rolled: boolean; rollTimer: number } | null = null
 let salamander: { x: number; speed: number; tickCount: number } | null = null
 let jay: { x: number; speed: number; carrying: boolean } | null = null
+let aurora: { intensity: number; phase: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -188,6 +189,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     hedgehog: hedgehog ? { x: hedgehog.x, rolled: hedgehog.rolled } : undefined,
     salamander: salamander ? { x: salamander.x } : undefined,
     jay: jay ? { x: jay.x, carrying: jay.carrying, leftward: jay.speed < 0 } : undefined,
+    aurora: aurora ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -406,6 +408,8 @@ export async function viewer(): Promise<void> {
       if (moth.y < SKY_ROWS + 1) moth.dy = Math.abs(moth.dy) * 0.5
       if (moth.y > SKY_ROWS + 5) moth.dy = -Math.abs(moth.dy) * 0.5
     }
+    // Aurora — phase drift for curtain animation
+    if (aurora) aurora.phase += 0.15
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
 
@@ -1337,6 +1341,23 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleJaySpawn()
+
+  // Aurora borealis — winter nights, every 3-6 hours, lasts 20-45 min
+  function scheduleAurora(): void {
+    const delay = (180 + Math.random() * 180) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const m = new Date().getMonth()
+      const isNight = h >= 22 || h < 3
+      const isWinter = m >= 10 || m <= 2
+      if (isNight && isWinter && !aurora) {
+        aurora = { intensity: 0.3 + Math.random() * 0.7, phase: Math.random() * Math.PI * 2 }
+        setTimeout(() => { aurora = null }, (20 + Math.random() * 25) * 60 * 1000)
+      }
+      scheduleAurora()
+    }, delay)
+  }
+  scheduleAurora()
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

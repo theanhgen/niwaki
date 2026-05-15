@@ -129,6 +129,7 @@ let sparrowhawk: { xf: number; speed: number; y: number } | null = null
 let titFlock: { x: number; y: number; speed: number }[] = []
 let goldfinch: { x: number; speed: number; pauseTimer: number } | null = null
 let barnOwl: { xf: number; y: number; speed: number; until: number } | null = null
+let slug: { xf: number; tickCount: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -206,6 +207,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     titFlock: titFlock.length > 0 ? titFlock.map(t => ({ x: t.x, y: t.y })) : undefined,
     goldfinch: goldfinch ? { x: goldfinch.x, paused: goldfinch.pauseTimer > 0 } : undefined,
     barnOwl: barnOwl ? { x: Math.floor(barnOwl.xf), y: barnOwl.y } : undefined,
+    slug: slug ? { x: Math.floor(slug.xf) } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -551,6 +553,11 @@ export async function viewer(): Promise<void> {
         snail = { xf: -2, tickCount: 0 }
         setTimeout(() => { snail = null }, 20 * 60 * 1000)
       }
+      // Slug emerges after rain — even slower, leaves slime trail
+      if (!slug && Math.random() < 0.4) {
+        slug = { xf: -1, tickCount: 0 }
+        setTimeout(() => { slug = null }, 25 * 60 * 1000)
+      }
       // Mushrooms sprout after rain — 3-6 scattered across ground, persist 20-50 min
       const mushroomCount = 3 + Math.floor(Math.random() * 4)
       const now2 = Date.now()
@@ -693,6 +700,15 @@ export async function viewer(): Promise<void> {
         if (threatened && Math.random() < 0.4) { hedgehog.rolled = true; hedgehog.rollTimer = 8 + Math.floor(Math.random() * 10) }
         else hedgehog.x += hedgehog.speed
       }
+    }
+    // Slug — extremely slow ground mover; emerges after rain, leaves slime trail
+    if (slug) {
+      slug.tickCount++
+      if (slug.tickCount >= 10) {
+        slug.tickCount = 0
+        slug.xf += 0.5
+      }
+      if (slug.xf > (process.stdout.columns || 80) + 3) slug = null
     }
     // Salamander — slow, pauses frequently; exits right edge
     if (salamander) {

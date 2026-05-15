@@ -121,6 +121,7 @@ let hedgehog: { x: number; speed: number; rolled: boolean; rollTimer: number } |
 let salamander: { x: number; speed: number; tickCount: number } | null = null
 let jay: { x: number; speed: number; carrying: boolean } | null = null
 let aurora: { intensity: number; phase: number } | null = null
+let buzzard: { xf: number; y: number; angle: number; speed: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -190,6 +191,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     salamander: salamander ? { x: salamander.x } : undefined,
     jay: jay ? { x: jay.x, carrying: jay.carrying, leftward: jay.speed < 0 } : undefined,
     aurora: aurora ?? undefined,
+    buzzard: buzzard ? { x: Math.floor(buzzard.xf), y: buzzard.y } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -410,6 +412,14 @@ export async function viewer(): Promise<void> {
     }
     // Aurora — phase drift for curtain animation
     if (aurora) aurora.phase += 0.15
+    // Buzzard — slow thermal soaring; circular drift in sky
+    if (buzzard) {
+      buzzard.angle += buzzard.speed
+      const w = process.stdout.columns || 80
+      const cx = w * 0.5; const r = w * 0.25
+      buzzard.xf = cx + Math.cos(buzzard.angle) * r
+      buzzard.y = Math.max(0, Math.min(SKY_ROWS - 2, 1 + Math.floor(Math.sin(buzzard.angle * 0.5) * 1.2)))
+    }
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
 
@@ -1358,6 +1368,22 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleAurora()
+
+  // Buzzard — soars on thermals midday, every 30-60 min; leaves after 5-15 min
+  function scheduleBuzzard(): void {
+    const delay = (30 + Math.random() * 30) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isMidday = h >= 10 && h <= 16
+      if (isMidday && !buzzard && (forest?.trees.length ?? 0) >= 5) {
+        const w = process.stdout.columns || 80
+        buzzard = { xf: w * 0.5, y: 1, angle: Math.random() * Math.PI * 2, speed: 0.04 + Math.random() * 0.03 }
+        setTimeout(() => { buzzard = null }, (5 + Math.random() * 10) * 60 * 1000)
+      }
+      scheduleBuzzard()
+    }, delay)
+  }
+  scheduleBuzzard()
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

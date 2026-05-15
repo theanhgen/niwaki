@@ -2443,6 +2443,44 @@ export function renderFrame(
     }
   }
 
+  // Conifer cone litter — autumn/winter, pine cones scattered under pines and araucaria
+  if ((season === "autumn" || season === "winter") && forest.trees.length >= 5) {
+    const conifers = ["pine", "araucaria", "eucalyptus"] as const
+    for (const tree of forest.trees) {
+      if (!conifers.some(t => tree.type === t) || tree.growth < 0.5) continue
+      for (let dx = -5; dx <= 5; dx++) {
+        const cx = tree.x + dx
+        if (cx < 0 || cx >= width) continue
+        if (hash(cx * 43 + tree.id * 29 + 77773) % 8 !== 0) continue
+        if (!buffer[groundStart]![cx]?.color)
+          buffer[groundStart]![cx] = { char: "●", color: "#6a4820" }
+      }
+    }
+  }
+
+  // Glow worm — summer nights, female glows green on ground to attract mate
+  if (period === "night" && season === "summer" && forest.trees.length >= 10) {
+    const seed4 = options.twinkleSeed ?? 0
+    for (let x = 0; x < width; x++) {
+      if (hash(x * 53 + 44449) % 25 !== 0) continue
+      const glowPhase = (seed4 + x * 3) % 20
+      if (glowPhase > 3) continue // blink slowly
+      if (!buffer[undergrowthY]![x]?.color)
+        buffer[undergrowthY]![x] = { char: "·", color: "#40e828" }
+    }
+  }
+
+  // Deer hoof prints — winter ground after deer visits; split-hoof ∨ marks
+  if (season === "winter" && options.deer) {
+    const dx0 = options.deer.x
+    for (let i = 0; i < 4; i++) {
+      const px = dx0 - i * 4
+      if (px < 0 || px >= width) continue
+      if (!buffer[groundStart]![px]?.color)
+        buffer[groundStart]![px] = { char: "∨", color: "#5a4030" }
+    }
+  }
+
   // 8zg. Ant trail — animated procession between two established trees, spring to autumn
   if (season !== "winter" && forest.trees.length >= 15) {
     const seed3 = options.twinkleSeed ?? 0

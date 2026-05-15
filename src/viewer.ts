@@ -104,6 +104,7 @@ let mossPatch = false
 let seedDrift: { xf: number; yf: number; dx: number; char: string }[] = []
 let badger: { x: number; speed: number } | null = null
 let kingfisher: { x: number; diving: boolean; diveTimer: number; until: number } | null = null
+let boar: { x: number; speed: number; rootingTimer: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -156,6 +157,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     seedDrift: seedDrift.length > 0 ? seedDrift.map(s => ({ x: Math.floor(s.xf), y: Math.floor(s.yf), char: s.char })) : undefined,
     badger: badger ? { x: badger.x } : undefined,
     kingfisher: kingfisher ? { x: kingfisher.x, diving: kingfisher.diving } : undefined,
+    boar: boar ? { x: boar.x, rooting: boar.rootingTimer > 0 } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -489,6 +491,17 @@ export async function viewer(): Promise<void> {
       const w = process.stdout.columns || 80
       if (badger.x > w + 3) badger = null
     }
+    // Wild boar — heavy rooter, stops to dig periodically
+    if (boar) {
+      const w = process.stdout.columns || 80
+      if (boar.x > w + 4) { boar = null }
+      else if (boar.rootingTimer > 0) {
+        boar.rootingTimer--
+      } else {
+        boar.x += boar.speed
+        if (Math.random() < 0.07) boar.rootingTimer = 5 + Math.floor(Math.random() * 8)
+      }
+    }
     // Kingfisher — dives and recovers, moves slowly along stream edge
     if (kingfisher) {
       const now = Date.now()
@@ -561,11 +574,14 @@ export async function viewer(): Promise<void> {
   }
   scheduleRabbitSpawn()
 
-  // Fox spawn: every 8–20 minutes, a single fox trots through
+  // Fox spawn: crepuscular — most active at dusk (17-21h) and dawn (4-8h), rarely midday
   function scheduleFoxSpawn(): void {
     const delay = (8 + Math.random() * 12) * 60 * 1000
     setTimeout(() => {
-      foxes.push({ x: -2, speed: 1 })
+      const h = new Date().getHours()
+      const isCrepuscular = (h >= 17 && h < 22) || (h >= 4 && h < 8) || (h >= 22 || h < 4)
+      const spawnChance = isCrepuscular ? 0.85 : 0.2
+      if (Math.random() < spawnChance) foxes.push({ x: -2, speed: 1 })
       scheduleFoxSpawn()
     }, delay)
   }
@@ -945,6 +961,22 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleKingfisher()
+
+  // Wild boar: autumn/winter, heavy ground forager, every 30-60 min
+  function scheduleBoar(): void {
+    const delay = (30 + Math.random() * 30) * 60 * 1000
+    setTimeout(() => {
+      const m = new Date().getMonth()
+      const h = new Date().getHours()
+      const isBoarSeason = m >= 8 || m <= 2
+      const isBoarTime = h >= 6 && h < 21
+      if (isBoarSeason && isBoarTime && !boar && (forest?.trees.length ?? 0) >= 8) {
+        boar = { x: -4, speed: 1, rootingTimer: 0 }
+      }
+      scheduleBoar()
+    }, delay)
+  }
+  scheduleBoar()
 
   // Berry clusters: summer/autumn, stable ground feature, refresh each season
   setInterval(() => {

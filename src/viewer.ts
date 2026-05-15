@@ -127,6 +127,7 @@ let pineMarten: { x: number; y: number; speed: number } | null = null
 let pheasant: { x: number; speed: number; flushed: boolean } | null = null
 let sparrowhawk: { xf: number; speed: number; y: number } | null = null
 let titFlock: { x: number; y: number; speed: number }[] = []
+let goldfinch: { x: number; speed: number; pauseTimer: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -202,6 +203,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     pheasant: pheasant ? { x: pheasant.x, flushed: pheasant.flushed } : undefined,
     sparrowhawk: sparrowhawk ? { x: Math.floor(sparrowhawk.xf), y: sparrowhawk.y, leftward: sparrowhawk.speed < 0 } : undefined,
     titFlock: titFlock.length > 0 ? titFlock.map(t => ({ x: t.x, y: t.y })) : undefined,
+    goldfinch: goldfinch ? { x: goldfinch.x, paused: goldfinch.pauseTimer > 0 } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -419,6 +421,17 @@ export async function viewer(): Promise<void> {
       if (moth.x >= width) moth.dx = -Math.abs(moth.dx)
       if (moth.y < SKY_ROWS + 1) moth.dy = Math.abs(moth.dy) * 0.5
       if (moth.y > SKY_ROWS + 5) moth.dy = -Math.abs(moth.dy) * 0.5
+    }
+    // Goldfinch — bright finch on seed heads; hops then pauses
+    if (goldfinch) {
+      const w = process.stdout.columns || 80
+      if (goldfinch.pauseTimer > 0) {
+        goldfinch.pauseTimer--
+      } else {
+        goldfinch.x += goldfinch.speed
+        if (Math.random() < 0.12) goldfinch.pauseTimer = 3 + Math.floor(Math.random() * 6)
+      }
+      if (goldfinch.x > w + 3 || goldfinch.x < -3) goldfinch = null
     }
     // Long-tailed tit flock — winter, small cluster drifting through bare canopy
     for (const tit of titFlock) {
@@ -1527,6 +1540,23 @@ export async function viewer(): Promise<void> {
     }
     setTimeout(() => { titFlock = [] }, (3 + Math.random() * 5) * 60 * 1000)
   }, 20 * 60 * 1000)
+
+  // Goldfinch — bright finch on seed heads; spring-autumn, every 15-25 min during day
+  function scheduleGoldfinchSpawn(): void {
+    const delay = (15 + Math.random() * 10) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const m = new Date().getMonth()
+      const isDay = h >= 7 && h < 19
+      const isSeason = m >= 2 && m <= 10 // Mar-Nov
+      if (isDay && isSeason && !goldfinch && (forest?.trees.length ?? 0) >= 3) {
+        goldfinch = { x: -1, speed: 1, pauseTimer: 0 }
+        setTimeout(() => { goldfinch = null }, (5 + Math.random() * 10) * 60 * 1000)
+      }
+      scheduleGoldfinchSpawn()
+    }, delay)
+  }
+  scheduleGoldfinchSpawn()
 
   // Starling murmuration — autumn/winter dusk, spectacular sky event every 2-4h
   function scheduleMurmuration(): void {

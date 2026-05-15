@@ -155,18 +155,23 @@ export async function viewer(): Promise<void> {
     for (let i = 0; i < 5; i++) shootingStarTrail.push({ x: startX - i * 2, y: i })
   }, 2000)
 
-  // Bird spawn scheduler: 2.5–3.5 minutes between flocks
+  // Bird spawn scheduler — season-aware migration
   function scheduleBirdSpawn(): void {
-    const spawnDelay = 150000 + Math.random() * 60000
+    const m = new Date().getMonth()
+    const season = m >= 2 && m <= 4 ? "spring" : m >= 5 && m <= 7 ? "summer" : m >= 8 && m <= 10 ? "autumn" : "winter"
+    const baseDelay = season === "winter" ? 480000 : season === "autumn" ? 70000 : season === "spring" ? 100000 : 150000
+    const spawnDelay = baseDelay + Math.random() * baseDelay * 0.4
     setTimeout(() => {
       const width = process.stdout.columns || 80
-      const count = 1 + Math.floor(Math.random() * 3)
+      // Winter: sparse; autumn: large flocks migrating south; spring: returning groups; summer: normal
+      const count = season === "winter" ? (Math.random() < 0.3 ? 1 : 0)
+                  : season === "autumn" ? 2 + Math.floor(Math.random() * 4)
+                  : season === "spring" ? 2 + Math.floor(Math.random() * 3)
+                  : 1 + Math.floor(Math.random() * 3)
       const baseX = -count
       const y = Math.floor(Math.random() * 3)
-      const speed = 1 + Math.floor(Math.random() * 2)
-      for (let i = 0; i < count; i++) {
-        birds.push({ x: baseX + i, y, speed })
-      }
+      const speed = season === "autumn" ? 2 + Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 2)
+      for (let i = 0; i < count; i++) birds.push({ x: baseX + i, y, speed })
       scheduleBirdSpawn()
     }, spawnDelay)
   }

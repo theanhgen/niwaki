@@ -490,6 +490,22 @@ export function renderFrame(
     if (boltX + 1 < width) buffer[0]![boltX + 1] = { char: "·", color: "#ffffcc" }
   }
 
+  // 7a. Spiderwebs — form between nearby trees at dawn, gone in wind/rain
+  if (period === "dawn" && !options.isRaining && (options.windStrength ?? 0) < 2) {
+    const sorted = [...forest.trees].sort((a, b) => a.x - b.x)
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const tA = sorted[i]!, tB = sorted[i + 1]!
+      const gap = tB.x - tA.x
+      if (gap < 5 || gap > 13) continue
+      const webY = SKY_ROWS  // just at the treeline
+      for (let x = tA.x + 2; x <= tB.x - 2; x++) {
+        if (buffer[webY]![x]?.color !== null) continue
+        const isMid = x === Math.floor((tA.x + tB.x) / 2)
+        buffer[webY]![x] = { char: isMid ? "·" : "-", color: "#6a7a9a" }
+      }
+    }
+  }
+
   // 7b. Rabbit — fast dawn sprinter along undergrowth row
   for (const rabbit of options.rabbits ?? []) {
     const ry = groundStart - 1
@@ -547,17 +563,20 @@ export function renderFrame(
   }
 
   // Fairy ring — permanent mushroom circle, unlocked after 3+ rain events
+  // Glows blue-green at night (bioluminescence)
+  const isNightTime = period === "night" || period === "dusk"
   if (options.fairyRingX !== undefined) {
     const rx = options.fairyRingX
     const ry = groundStart - 1
+    const ringColor = isNightTime ? "#30d870" : "#8a3a2a"
     const ring = [-3, -1, 1, 3] as const
     for (const dx of ring) {
       const fx = rx + dx
       if (fx >= 0 && fx < width) {
-        buffer[ry]![fx] = { char: "♦", color: dx % 2 === 0 ? "#8a3a2a" : "#c45020" }
+        buffer[ry]![fx] = { char: "♦", color: isNightTime ? lerpColor(ringColor, "#20a850", dx % 2 === 0 ? 0 : 0.4) : (dx % 2 === 0 ? "#8a3a2a" : "#c45020") }
       }
     }
-    if (rx >= 0 && rx < width) buffer[groundStart]![rx] = { char: "○", color: "#4a6030" }
+    if (rx >= 0 && rx < width) buffer[groundStart]![rx] = { char: "○", color: isNightTime ? "#28b848" : "#4a6030" }
   }
 
   // Post-rain: puddles on ground + mushrooms in undergrowth
@@ -568,7 +587,9 @@ export function renderFrame(
         buffer[groundStart]![x] = { char: "~", color: "#3a6a8a" }
       }
       if (h % 11 === 0 && buffer[undergrowthY]![x]?.color === null) {
-        const mushroomColors = ["#8a3a2a", "#c4521a", "#e8782a"] as const
+        const mushroomColors = isNightTime
+          ? ["#28b848", "#30d060", "#20a840"] as const
+          : ["#8a3a2a", "#c4521a", "#e8782a"] as const
         buffer[undergrowthY]![x] = { char: "♦", color: mushroomColors[h % 3]! }
       }
     }

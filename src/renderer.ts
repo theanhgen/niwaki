@@ -826,6 +826,21 @@ export function renderFrame(
       buffer[groundStart]![foxX + 1] = { char: "░", color: lerpColor(biome.ground[0]!, "#8a5830", 0.5) }
   }
 
+  // Fox cubs — spring (March-May), tumbling near the earth entrance; tiny `◦` shapes
+  if (season === "spring" && forest.trees.length >= 20) {
+    const m = now.getMonth()
+    if (m >= 2 && m <= 4) {
+      const foxSeed2 = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+      const foxX2 = 2 + hash(foxSeed2 * 17 + 33337) % Math.floor(width * 0.2)
+      for (let di = 2; di <= 5; di++) {
+        const cx = foxX2 + di
+        if (cx >= width) continue
+        if (!buffer[undergrowthY]![cx]?.color)
+          buffer[undergrowthY]![cx] = { char: "◦", color: "#c07030" }
+      }
+    }
+  }
+
   // Ancient tree gnarling — root buttresses and gnarled bark on very old trees
   if (forest.trees.length >= 50) {
     for (const tree of forest.trees) {
@@ -2988,6 +3003,20 @@ export function renderFrame(
         if (!buffer[groundStart - 1]![lx]?.color)
           buffer[groundStart - 1]![lx] = { char: "◦", color: litterColors[tree.type] ?? "#6a4020" }
       }
+    }
+  }
+
+  // Mistle thrush ("stormcock") — sings boldly from treetop in bad weather; ♪ notes in rain/wind
+  if (options.isRaining && (options.windStrength ?? 0) >= 1 && forest.trees.length >= 5 && period !== "night") {
+    const thrushSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const thrushTree = forest.trees[hash(thrushSeed * 13 + 77773) % forest.trees.length]!
+    const tick = options.twinkleSeed ?? 0
+    const noteChars = ["♪", "♫", "♩"]
+    for (let i = 0; i < 3; i++) {
+      const nx = thrushTree.x - 3 + i * 3
+      const ny = SKY_ROWS + Math.floor((tick * 0.2 + i) % 3)
+      if (nx >= 0 && nx < width && ny >= SKY_ROWS && ny < groundStart && !buffer[ny]![nx]?.color)
+        buffer[ny]![nx] = { char: noteChars[i % noteChars.length]!, color: "#e0c080" }
     }
   }
 

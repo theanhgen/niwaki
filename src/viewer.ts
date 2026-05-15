@@ -137,6 +137,7 @@ let raven: { xf: number; y: number; speed: number } | null = null
 let swallows: { xf: number; y: number; speed: number; dy: number }[] = []
 let redKite: { xf: number; y: number; speed: number; angle: number } | null = null
 let waxwings: { xf: number; y: number; speed: number }[] = []
+let bullfinch: { x: number; speed: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -222,6 +223,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     swallows: swallows.length > 0 ? swallows.map(s => ({ x: Math.floor(s.xf), y: s.y })) : undefined,
     redKite: redKite ? { x: Math.floor(redKite.xf), y: redKite.y } : undefined,
     waxwings: waxwings.length > 0 ? waxwings.map(w => ({ x: Math.floor(w.xf), y: w.y })) : undefined,
+    bullfinch: bullfinch ? { x: bullfinch.x } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -496,6 +498,12 @@ export async function viewer(): Promise<void> {
     // Waxwings — Bohemian berry-stripper flocks in winter; fast across canopy top
     waxwings = waxwings.filter(w => w.xf > -4 && w.xf < (process.stdout.columns || 80) + 4)
     for (const w of waxwings) { w.xf += w.speed }
+    // Bullfinch — rose-red male at berry bushes; slow hops along hedge
+    if (bullfinch) {
+      if (Math.random() < 0.5) bullfinch.x += bullfinch.speed
+      const w = process.stdout.columns || 80
+      if (bullfinch.x > w + 3 || bullfinch.x < -3) bullfinch = null
+    }
     // Swallows — spring/summer aerial insect hunters; fast, swooping through canopy level
     swallows = swallows.filter(s => s.xf < (process.stdout.columns || 80) + 4)
     for (const s of swallows) {
@@ -1809,6 +1817,20 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleRedKiteSpawn()
+
+  // Bullfinch — plump bird with rose-red breast; winter berry feeder; every 10-20 min
+  function scheduleBullfinchSpawn(): void {
+    const delay = (10 + Math.random() * 10) * 60 * 1000
+    setTimeout(() => {
+      const m = new Date().getMonth()
+      if (!bullfinch && (m >= 9 || m <= 3) && (forest?.trees.length ?? 0) >= 5) {
+        const width = process.stdout.columns || 80
+        bullfinch = { x: Math.floor(Math.random() * (width - 10)) + 5, speed: Math.random() < 0.5 ? 1 : -1 }
+      }
+      scheduleBullfinchSpawn()
+    }, delay)
+  }
+  scheduleBullfinchSpawn()
 
   // Waxwings — irruptive Scandinavian visitors in berry years; Nov-Feb; every 2-4 hours
   setInterval(() => {

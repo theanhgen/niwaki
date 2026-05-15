@@ -112,6 +112,7 @@ let groundFog = false
 let moth: { x: number; y: number; color: string; dx: number; dy: number } | null = null
 let migration: { xf: number; y: number; size: number; speed: number } | null = null
 let raccoon: { x: number; speed: number; washing: boolean; washTimer: number } | null = null
+let moleHills: { x: number; until: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -172,6 +173,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     moth: moth ? { x: Math.floor(moth.x), y: Math.floor(moth.y), color: moth.color } : undefined,
     migration: migration ? { x: Math.floor(migration.xf), y: migration.y, size: migration.size } : undefined,
     raccoon: raccoon ? { x: raccoon.x, washing: raccoon.washing } : undefined,
+    moleHills: moleHills.length > 0 ? moleHills.map(m => m.x) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -1077,11 +1079,19 @@ export async function viewer(): Promise<void> {
     mossPatch = isDamp
   }, 3 * 60 * 1000)
 
-  // Mushroom + puddle expiry tick
+  // Mushroom + puddle + mole hill expiry tick
   setInterval(() => {
     const now = Date.now()
     groundMushrooms = groundMushrooms.filter(m => now < m.until)
     puddles = puddles.filter(p => now < p.until && !isRaining)
+    moleHills = moleHills.filter(m => now < m.until)
+    // Moles push up fresh hills overnight or after rain — 20% chance each tick
+    if (Math.random() < 0.20 && (forest?.trees.length ?? 0) >= 5) {
+      const width = process.stdout.columns || 80
+      const hillDuration = (30 + Math.random() * 60) * 60 * 1000
+      moleHills.push({ x: Math.floor(Math.random() * (width - 4)) + 2, until: now + hillDuration })
+      if (moleHills.length > 4) moleHills.shift()
+    }
   }, 60 * 1000)
 
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn

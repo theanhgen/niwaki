@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1282,6 +1282,52 @@ export function renderFrame(
         const h = hash(x * 37 + y * 83 + bseed * 17 + 66661)
         if (h % 6 === 0 && !buffer[y]![x]?.color) {
           buffer[y]![x] = { char: "╌", color: "#5888a8" }
+        }
+      }
+    }
+  }
+
+  // 8j. Blight / fungal outbreak — mushroom clusters, infected canopy, spore drift
+  if (options.blight && options.blight.zones.length > 0) {
+    const { zones, intensity, seed: bseed } = options.blight
+    for (const zx of zones) {
+      // Mushroom clusters at trunk base (undergrowth row)
+      for (let dx = -2; dx <= 2; dx++) {
+        const cx = zx + dx
+        if (cx < 0 || cx >= width) continue
+        const h = hash(cx * 67 + bseed + 22221)
+        if (h % 3 === 0) {
+          const mushroomY = groundStart - 1
+          const mushroomColors = ["#c06880", "#9a5060", "#d07890"]
+          buffer[mushroomY]![cx] = { char: "♠", color: mushroomColors[h % mushroomColors.length]! }
+        }
+      }
+      // Infected canopy — sickly purple-grey spots on leaves
+      if (intensity > 0.3) {
+        for (let y = SKY_ROWS; y < groundStart - 2; y++) {
+          for (let dx = -3; dx <= 3; dx++) {
+            const cx = zx + dx
+            if (cx < 0 || cx >= width) continue
+            const cell = buffer[y]![cx]
+            if (!cell?.color) continue
+            const h = hash(cx * 43 + y * 71 + bseed + 33331)
+            if (h % 4 === 0) {
+              buffer[y]![cx] = { char: cell.char, color: lerpColor(cell.color, "#8868a0", intensity * 0.75) }
+            }
+          }
+        }
+      }
+    }
+    // Spore drift — fine dots drifting up from zone centers through tree rows
+    if (intensity > 0.5) {
+      for (const zx of zones) {
+        for (let y = SKY_ROWS; y < groundStart; y++) {
+          const sx = zx + Math.round(Math.sin(y * 0.7 + bseed * 0.01) * 3)
+          if (sx < 0 || sx >= width) continue
+          const h = hash(sx * 31 + y * 97 + bseed + 44441)
+          if (h % 7 === 0 && !buffer[y]![sx]?.color) {
+            buffer[y]![sx] = { char: "·", color: lerpColor("#a080c0", "#d0a0d8", intensity) }
+          }
         }
       }
     }

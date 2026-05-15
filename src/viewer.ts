@@ -88,6 +88,7 @@ let wildfire: { x: number; width: number; stage: string; until: number } | null 
 let beetles: { treePositions: { x: number; radius: number }[]; intensity: number; peakReached: boolean } | null = null
 let drought: { intensity: number; fadingOut: boolean } | null = null
 let blowdown: { seed: number; fallen: { x: number; dir: 1 | -1 }[]; until: number } | null = null
+let blight: { zones: number[]; intensity: number; seed: number; fadingOut: boolean } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -124,6 +125,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     beetles: beetles ? { zones: beetles.treePositions, intensity: beetles.intensity } : undefined,
     drought: drought ? { intensity: drought.intensity } : undefined,
     blowdown: blowdown ? { seed: blowdown.seed, fallen: blowdown.fallen } : undefined,
+    blight: blight ? { zones: blight.zones, intensity: blight.intensity, seed: blight.seed } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -634,6 +636,41 @@ export async function viewer(): Promise<void> {
       }
     }
   }, 45 * 1000)
+
+  // Blight / fungal outbreak: damp seasons, spreads on infected trees, mushrooms + spores
+  setInterval(() => {
+    const m = new Date().getMonth()
+    const isDamp = m >= 3 && m <= 10
+    const trees = (forest?.trees ?? []).filter(t => t.type !== "stump" && t.growth > 0.4)
+    if (blight) {
+      if (blight.fadingOut) {
+        blight.intensity = Math.max(0, blight.intensity - 0.04)
+        if (blight.intensity <= 0) { blight = null; return }
+      } else {
+        blight.intensity = Math.min(1.0, blight.intensity + 0.02)
+        // Spread to adjacent infected trees
+        if (blight.intensity > 0.35 && blight.zones.length < 5 && Math.random() < 0.4) {
+          const candidate = trees
+            .filter(t => !blight!.zones.includes(t.x))
+            .sort((a, b) => {
+              const dA = Math.min(...blight!.zones.map(z => Math.abs(z - a.x)))
+              const dB = Math.min(...blight!.zones.map(z => Math.abs(z - b.x)))
+              return dA - dB
+            })[0]
+          if (candidate && Math.min(...blight!.zones.map(z => Math.abs(z - candidate.x))) < 18) {
+            blight.zones.push(candidate.x)
+          }
+        }
+        if (blight.intensity >= 1.0) {
+          blight.fadingOut = false
+          setTimeout(() => { if (blight) blight.fadingOut = true }, (15 + Math.random() * 20) * 60 * 1000)
+        }
+      }
+    } else if (isDamp && !wildfire && trees.length >= 8 && Math.random() < 0.0006) {
+      const seed = trees[Math.floor(Math.random() * trees.length)]!
+      blight = { zones: [seed.x], intensity: 0.08, seed: Math.floor(Math.random() * 99999), fadingOut: false }
+    }
+  }, 75 * 1000)
 
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn
   setInterval(() => {

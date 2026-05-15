@@ -102,6 +102,8 @@ let otter: { x: number; diving: boolean; diveTimer: number } | null = null
 let berries: { x: number; color: string }[] = []
 let mossPatch = false
 let seedDrift: { xf: number; yf: number; dx: number; char: string }[] = []
+let badger: { x: number; speed: number } | null = null
+let kingfisher: { x: number; diving: boolean; diveTimer: number; until: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -152,6 +154,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     berries: berries.length > 0 ? berries : undefined,
     mossPatch: mossPatch || undefined,
     seedDrift: seedDrift.length > 0 ? seedDrift.map(s => ({ x: Math.floor(s.xf), y: Math.floor(s.yf), char: s.char })) : undefined,
+    badger: badger ? { x: badger.x } : undefined,
+    kingfisher: kingfisher ? { x: kingfisher.x, diving: kingfisher.diving } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -477,6 +481,24 @@ export async function viewer(): Promise<void> {
       } else {
         c.x += c.speed
         if (Math.random() < 0.08) { c.pecking = true; c.peckTimer = 3 + Math.floor(Math.random() * 6) }
+      }
+    }
+    // Badger — slow nocturnal forager, shuffles across ground
+    if (badger) {
+      badger.x += badger.speed
+      const w = process.stdout.columns || 80
+      if (badger.x > w + 3) badger = null
+    }
+    // Kingfisher — dives and recovers, moves slowly along stream edge
+    if (kingfisher) {
+      const now = Date.now()
+      if (now > kingfisher.until) { kingfisher = null }
+      else if (kingfisher.diveTimer > 0) {
+        kingfisher.diveTimer--
+        if (kingfisher.diveTimer === 0) kingfisher.diving = false
+      } else if (!kingfisher.diving && Math.random() < 0.05) {
+        kingfisher.diving = true
+        kingfisher.diveTimer = 2 + Math.floor(Math.random() * 4)
       }
     }
   }, 400)
@@ -888,6 +910,41 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleOtter()
+
+  // Badger: nocturnal, emerges at dusk/night, shuffles slowly across ground
+  function scheduleBadger(): void {
+    const delay = (25 + Math.random() * 35) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isNight = h >= 20 || h < 5
+      if (isNight && !badger) badger = { x: -3, speed: 1 }
+      scheduleBadger()
+    }, delay)
+  }
+  scheduleBadger()
+
+  // Kingfisher: stream bird, day only, every 15-35 min, perches and dives
+  function scheduleKingfisher(): void {
+    const delay = (15 + Math.random() * 20) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const w = process.stdout.columns || 80
+      if (h >= 7 && h < 20 && !kingfisher && (forest?.trees.length ?? 0) >= 10) {
+        const bounds = getStreamBounds(forest!, w)
+        if (bounds) {
+          const now = Date.now()
+          kingfisher = {
+            x: bounds.x + Math.floor(Math.random() * bounds.w),
+            diving: false,
+            diveTimer: 0,
+            until: now + (3 + Math.random() * 7) * 60 * 1000,
+          }
+        }
+      }
+      scheduleKingfisher()
+    }, delay)
+  }
+  scheduleKingfisher()
 
   // Berry clusters: summer/autumn, stable ground feature, refresh each season
   setInterval(() => {

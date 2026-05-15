@@ -306,13 +306,15 @@ function getMoonPhase(date: Date): number {
 }
 
 function getMoonChar(phase: number): string {
-  if (phase < 0.05 || phase > 0.95) return "·"
-  if (phase < 0.25) return "◔"
-  if (phase < 0.45) return "◑"
-  if (phase < 0.55) return "●"
-  if (phase < 0.75) return "◑"
-  if (phase < 0.95) return "◔"
-  return "·"
+  if (phase < 0.04 || phase > 0.96) return ""           // new moon: invisible
+  if (phase < 0.24) return "◑"                          // waxing crescent→quarter
+  if (phase < 0.26) return "◑"                          // first quarter
+  if (phase < 0.46) return "●"                          // waxing gibbous
+  if (phase < 0.54) return "◉"                          // full moon
+  if (phase < 0.74) return "●"                          // waning gibbous
+  if (phase < 0.76) return "◐"                          // last quarter
+  if (phase < 0.96) return "◐"                          // waning crescent→quarter
+  return ""
 }
 
 // ── Seasons ──────────────────────────────────────────────────────────────────
@@ -391,7 +393,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[]; snail?: { x: number }; caterpillar?: { segments: number[]; dir: 1 | -1 }; otter?: { x: number; diving: boolean }; berries?: { x: number; color: string }[]; mossPatch?: boolean; seedDrift?: { x: number; y: number; char: string }[] } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[]; snail?: { x: number }; caterpillar?: { segments: number[]; dir: 1 | -1 }; otter?: { x: number; diving: boolean }; berries?: { x: number; color: string }[]; mossPatch?: boolean; seedDrift?: { x: number; y: number; char: string }[]; badger?: { x: number }; kingfisher?: { x: number; diving: boolean } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -518,15 +520,34 @@ export function renderFrame(
     buffer[star.y]![star.x] = { char: star.char, color: starColor }
   }
 
-  // 4. Moon
+  // 4. Moon — phased, arcs through night sky, invisible during day
   const moonPhase = getMoonPhase(now)
-  const moonBrightness = Math.sin(moonPhase * Math.PI)
-  const moonColor = lerpColor("#555550", "#ddd8c8", moonBrightness)
   const moonChar = getMoonChar(moonPhase)
-  const moonX = Math.floor(width * 0.72)
-  const moonY = 1
-  if (moonX >= 0 && moonX < width) {
-    buffer[moonY]![moonX] = { char: moonChar, color: moonColor }
+  if (moonChar && (period === "night" || (period === "dusk" && blend > 0.5) || (period === "dawn" && blend < 0.4))) {
+    const moonBrightness = Math.sin(moonPhase * Math.PI)
+    const baseColor = lerpColor("#7a7870", "#f0ead8", moonBrightness)
+    const nightFade = period === "dusk" ? blend : period === "dawn" ? 1 - blend : 1
+    const moonColor = lerpColor(getSkyColor(1, period, blend), baseColor, Math.min(1, nightFade * 1.4))
+    // Arc: rises east at dusk, overhead at midnight, sets west at dawn
+    const h = now.getHours()
+    const nightProgress = h >= 20 ? (h - 20) / 8 : h < 4 ? (h + 4) / 8 : 0.5
+    const moonX = Math.floor(width * (0.78 - nightProgress * 0.5))
+    const moonY = Math.max(0, Math.round(Math.abs(nightProgress - 0.5) * 2.5))
+    if (moonX >= 0 && moonX < width) {
+      buffer[moonY]![moonX] = { char: moonChar, color: moonColor }
+      // Full moon glow — warm halo on adjacent sky cells
+      if (moonPhase > 0.44 && moonPhase < 0.56) {
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            if (dx === 0 && dy === 0) continue
+            const gx = moonX + dx; const gy = moonY + dy
+            if (gy >= 0 && gy < SKY_ROWS && gx >= 0 && gx < width && !buffer[gy]![gx]?.color) {
+              buffer[gy]![gx] = { char: "░", color: lerpColor(getSkyColor(gy, period, blend), "#e8d8a0", 0.22) }
+            }
+          }
+        }
+      }
+    }
   }
 
   // 4b. Clouds — rendered after stars/moon so they cover them; birds/bats drawn later in front
@@ -1524,6 +1545,29 @@ export function renderFrame(
     for (const { x, y, char } of options.seedDrift) {
       if (x < 0 || x >= width || y < SKY_ROWS || y >= groundStart) continue
       if (!buffer[y]![x]?.color) buffer[y]![x] = { char, color: "#d0c890" }
+    }
+  }
+
+  // 8x. Badger — nocturnal ground forager, stocky with white-grey stripe
+  if (options.badger) {
+    const { x: bx } = options.badger
+    const badgerY = groundStart - 1
+    if (bx >= 0 && bx < width - 1) {
+      buffer[badgerY]![bx] = { char: "▄", color: "#505050" }
+      if (bx + 1 < width) buffer[badgerY]![bx + 1] = { char: "▄", color: "#c8c8c0" }
+    }
+  }
+
+  // 8y. Kingfisher — electric blue perched at stream edge, dives with orange flash
+  if (options.kingfisher && forest.trees.length >= 10) {
+    const { x: kx, diving } = options.kingfisher
+    if (kx >= 0 && kx < width) {
+      const perchY = groundStart - 1
+      if (diving) {
+        buffer[perchY]![kx] = { char: "↓", color: "#e07820" }
+      } else {
+        buffer[perchY]![kx] = { char: "◆", color: "#1880d8" }
+      }
     }
   }
 

@@ -62,6 +62,7 @@ let isLightning = false
 let comet: { x: number; y: number } | null = null
 let bearPrints: number[] | null = null
 let bats: { x: number; y: number; speed: number }[] = []
+let hawk: { x: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -81,6 +82,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     comet: comet ?? undefined,
     bearPrints: bearPrints ?? undefined,
     bats,
+    hawk: hawk ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -227,11 +229,27 @@ export async function viewer(): Promise<void> {
   }, 3 * 60 * 1000)
 
   setInterval(() => {
-    if (!deer) return
     const width = process.stdout.columns || 80
-    deer.x += deer.speed
-    if (deer.x > width + 3) deer = null
+    if (deer) {
+      deer.x += deer.speed
+      if (deer.x > width + 3) deer = null
+    }
+    if (hawk) {
+      hawk.x += 1
+      if (hawk.x > width + 3) hawk = null
+    }
   }, 2000)
+
+  // Hawk: solitary soaring raptor, day only, every 20-40 min
+  function scheduleHawkSpawn(): void {
+    const delay = (20 + Math.random() * 20) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      if (h >= 7 && h < 19 && !hawk) hawk = { x: -2 }
+      scheduleHawkSpawn()
+    }, delay)
+  }
+  scheduleHawkSpawn()
 
   // Rabbit spawn: dawn only (5–8h), every 4–10 min, faster than fox
   function scheduleRabbitSpawn(): void {

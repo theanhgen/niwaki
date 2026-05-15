@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[] } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -483,6 +483,21 @@ export function renderFrame(
     }
   }
 
+  // Stream — meanders through second ground row once forest is established (grove+)
+  if (forest.trees.length >= 10) {
+    const createdSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const streamX = Math.floor(width * 0.15 + hash(createdSeed * 13 + 77) % Math.floor(width * 0.65))
+    const streamW = 14 + hash(streamX * 7 + 88) % 8
+    const seed = options.twinkleSeed ?? 0
+    const streamColor = options.postRain ? "#5aaaca" : "#2a6a8a"
+    for (let i = 0; i < streamW; i++) {
+      const sx = streamX + i
+      if (sx < 0 || sx >= width) continue
+      const shimmer = hash(sx * 53 + seed * 37 + 22222) % 2 === 0
+      buffer[groundStart + 1]![sx] = { char: shimmer ? "≈" : "~", color: streamColor }
+    }
+  }
+
   // 6. Composite trees
   const treeBaseY = groundStart - 1
   for (const tree of forest.trees) {
@@ -528,6 +543,11 @@ export function renderFrame(
         buffer[bat.y]![bat.x] = { char: "\\", color: "#6a5448" }
       }
     }
+  }
+
+  // 7f. Hawk — solitary soaring raptor during day, slow crossing at high altitude
+  if (options.hawk && options.hawk.x >= 0 && options.hawk.x < width) {
+    buffer[0]![options.hawk.x] = { char: "^", color: "#4a3a28" }
   }
 
   // 7b. Lightning bolt in sky
@@ -759,6 +779,20 @@ export function renderFrame(
         const mistChar = h % 3 === 0 ? "▒" : "░"
         buffer[y]![x] = { char: mistChar, color: "#7a8fa8" }
       }
+    }
+  }
+
+  // Snowfall — winter, animated drifting flakes across sky and canopy
+  if (season === "winter" && !options.isRaining) {
+    const seed = options.twinkleSeed ?? 0
+    const flakeCount = Math.max(5, Math.floor(width * 0.07))
+    for (let i = 0; i < flakeCount; i++) {
+      const h = hash(i * 43 + seed * 71 + 11111)
+      const x = (h + seed * 2) % width
+      const y = hash(h + seed * 5 + 7) % (SKY_ROWS + TREE_ROWS - 1)
+      const intensity = h % 4
+      if (intensity === 0) continue  // skip ~25% for sparseness
+      buffer[y]![x] = { char: intensity === 3 ? "*" : "·", color: intensity === 3 ? "#e8eef4" : "#c0ccd8" }
     }
   }
 

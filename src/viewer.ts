@@ -61,6 +61,7 @@ let windStrength: 0 | 1 | 2 = 0
 let isLightning = false
 let comet: { x: number; y: number } | null = null
 let bearPrints: number[] | null = null
+let bats: { x: number; y: number; speed: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -79,6 +80,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     isLightning,
     comet: comet ?? undefined,
     bearPrints: bearPrints ?? undefined,
+    bats,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -137,11 +139,17 @@ export async function viewer(): Promise<void> {
   let lastTotalPrompts = forest.totalPrompts
   let animating = false
 
-  // Bird + shooting star movement: 250ms tick
+  // Bird + bat + shooting star movement: 250ms tick
   setInterval(() => {
     const width = process.stdout.columns || 80
     birds = birds.filter((b) => b.x <= width)
     birds.forEach((b) => { b.x += b.speed + windStrength })
+    // Bats fly right-to-left, y oscillates randomly
+    bats = bats.filter((b) => b.x >= -3)
+    bats.forEach((b) => {
+      b.x -= b.speed
+      if (Math.random() < 0.3) b.y = Math.max(0, Math.min(3, b.y + (Math.random() < 0.5 ? -1 : 1)))
+    })
     // Advance shooting star trail diagonally (right 2, down 1)
     shootingStarTrail = shootingStarTrail
       .map((p) => ({ x: p.x + 2, y: p.y + 1 }))
@@ -245,6 +253,24 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleFoxSpawn()
+
+  // Bat spawn: dusk and night, groups of 2-4, every 3-8 minutes
+  function scheduleBatSpawn(): void {
+    const delay = (3 + Math.random() * 5) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isDuskNight = h >= 19 || h < 5
+      if (isDuskNight) {
+        const width = process.stdout.columns || 80
+        const count = 2 + Math.floor(Math.random() * 3)
+        for (let i = 0; i < count; i++) {
+          bats.push({ x: width + 2 + i * 2, y: 1 + Math.floor(Math.random() * 2), speed: 1 + Math.floor(Math.random() * 2) })
+        }
+      }
+      scheduleBatSpawn()
+    }, delay)
+  }
+  scheduleBatSpawn()
 
   // Lightning: rare flash during rain (3% per 500ms check)
   setInterval(() => {

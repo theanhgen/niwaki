@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[] } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[] } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -394,6 +394,22 @@ export function renderFrame(
       const glowColor = lerpColor(sun.color, getSkyColor(sun.y, period, blend), 0.55)
       if (sun.x + 1 < width) buffer[sun.y]![sun.x + 1] = { char: "·", color: glowColor }
       if (sun.x - 1 >= 0) buffer[sun.y]![sun.x - 1] = { char: "·", color: glowColor }
+    }
+  }
+
+  // 2b2. Crepuscular rays — warm light shafts at dawn/dusk fanning from horizon
+  if ((period === "dawn" || period === "dusk") && !options.isRaining) {
+    const rayColor = period === "dawn" ? "#d88038" : "#c04820"
+    const spread = Math.floor(width * 0.09)
+    const centerX = period === "dawn" ? Math.floor(width * 0.2) : Math.floor(width * 0.75)
+    for (let i = 0; i < 6; i++) {
+      const rx = centerX + (i - 2) * spread + hash(i * 31 + 55555) % (spread >> 1)
+      if (rx < 0 || rx >= width) continue
+      if (hash(rx * 17 + 33333) % 3 === 0) continue
+      for (let y = 0; y < SKY_ROWS - 1; y++) {
+        const fade = (SKY_ROWS - 1 - y) / (SKY_ROWS - 1)  // stronger near horizon
+        buffer[y]![rx] = { char: "│", color: lerpColor(getSkyColor(y, period, blend), rayColor, fade * 0.45) }
+      }
     }
   }
 
@@ -502,6 +518,15 @@ export function renderFrame(
   for (const bird of options.birds ?? []) {
     if (bird.y >= 0 && bird.y < SKY_ROWS && bird.x >= 0 && bird.x < width) {
       buffer[bird.y]![bird.x] = { char: ">", color: "#7a7878" }
+    }
+  }
+
+  // 7e. Bats — dusk/night, fly right-to-left with erratic altitude
+  if (period === "night" || period === "dusk") {
+    for (const bat of options.bats ?? []) {
+      if (bat.y >= 0 && bat.y < SKY_ROWS && bat.x >= 0 && bat.x < width) {
+        buffer[bat.y]![bat.x] = { char: "\\", color: "#6a5448" }
+      }
     }
   }
 
@@ -671,6 +696,22 @@ export function renderFrame(
       if (buffer[y]![x]?.color !== null) continue
       const petalColors = ["#f0a0c0", "#e880a8", "#ffc0d8"] as const
       buffer[y]![x] = { char: "✿", color: petalColors[h % 3]! }
+    }
+  }
+
+  // 8c. Butterflies — spring/summer, drift in upper canopy
+  if (season === "spring" || season === "summer") {
+    const seed = options.twinkleSeed ?? 0
+    const count = Math.max(2, Math.floor(width * 0.04))
+    for (let i = 0; i < count; i++) {
+      const h = hash(i * 67 + seed * 89 + 7777)
+      const x = h % width
+      const y = SKY_ROWS + (hash(h + 3) % Math.floor(TREE_ROWS * 0.55))
+      if (buffer[y]![x]?.color !== null) continue
+      const springColors = ["#f870c0", "#e050a0", "#ffb0d8"] as const
+      const summerColors = ["#f8c020", "#e0a018", "#ffd060"] as const
+      const palette = season === "spring" ? springColors : summerColors
+      buffer[y]![x] = { char: "~", color: palette[h % 3]! }
     }
   }
 

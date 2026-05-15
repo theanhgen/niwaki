@@ -96,6 +96,9 @@ let groundMushrooms: { x: number; until: number }[] = []
 let morningDew = false
 let pollenDrift: { xf: number; yf: number; dx: number }[] = []
 let spiderWebs: { x: number; span: number; until: number }[] = []
+let snail: { xf: number; tickCount: number } | null = null
+let caterpillar: { segments: number[]; dir: 1 | -1; tickCount: number } | null = null
+let otter: { x: number; diving: boolean; diveTimer: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -140,6 +143,9 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     morningDew,
     pollenDrift: pollenDrift.length > 0 ? pollenDrift.map(p => ({ x: Math.floor(p.xf), y: Math.floor(p.yf) })) : undefined,
     spiderWebs: spiderWebs.length > 0 ? spiderWebs.map(w => ({ x: w.x, span: w.span })) : undefined,
+    snail: snail ? { x: Math.floor(snail.xf) } : undefined,
+    caterpillar: caterpillar ? { segments: caterpillar.segments, dir: caterpillar.dir } : undefined,
+    otter: otter ? { x: otter.x, diving: otter.diving } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -273,6 +279,39 @@ export async function viewer(): Promise<void> {
       l.yf += 0.18
       l.xf += l.dx + (Math.random() - 0.5) * 0.12
     }
+    // Snail — moves 1 char every 8 ticks (~2s), clears when off-screen
+    if (snail) {
+      snail.tickCount++
+      if (snail.tickCount >= 8) {
+        snail.xf += 0.5
+        snail.tickCount = 0
+      }
+      if (snail.xf > width + 2) snail = null
+    }
+    // Caterpillar — inches along undergrowth, 1 seg shift every 5 ticks (~1.25s)
+    if (caterpillar) {
+      caterpillar.tickCount++
+      if (caterpillar.tickCount >= 5) {
+        caterpillar.tickCount = 0
+        const lead = caterpillar.segments[0]!
+        const newLead = lead + caterpillar.dir
+        caterpillar.segments = [newLead, ...caterpillar.segments.slice(0, -1)]
+        if (newLead > width + 4 || newLead < -4) caterpillar = null
+      }
+    }
+    // Otter — swims in stream, dives occasionally, moves 1 col per tick
+    if (otter) {
+      otter.x += 1
+      if (otter.diveTimer > 0) {
+        otter.diveTimer--
+        if (otter.diveTimer === 0) otter.diving = false
+      } else if (!otter.diving && Math.random() < 0.02) {
+        otter.diving = true
+        otter.diveTimer = 3 + Math.floor(Math.random() * 5)
+      }
+      const bounds = getStreamBounds(forest!, width)
+      if (!bounds || otter.x > bounds.x + bounds.w + 4) otter = null
+    }
     if (!animating) renderForest(forest!, 0, activeMilestoneText)
   }, 250)
 
@@ -349,6 +388,11 @@ export async function viewer(): Promise<void> {
       if (!frog && Math.random() < 0.6) {
         frog = { x: Math.floor(width * 0.3 + Math.random() * width * 0.4) }
         setTimeout(() => { frog = null }, (5 + Math.random() * 10) * 60 * 1000)
+      }
+      // Snail emerges after rain — very slow, crosses ground over ~15 min
+      if (!snail && Math.random() < 0.5) {
+        snail = { xf: -2, tickCount: 0 }
+        setTimeout(() => { snail = null }, 20 * 60 * 1000)
       }
       // Mushrooms sprout after rain — 3-6 scattered across ground, persist 20-50 min
       const mushroomCount = 3 + Math.floor(Math.random() * 4)
@@ -780,6 +824,45 @@ export async function viewer(): Promise<void> {
       spiderWebs.push({ x: webX, span, until: now + (1 + Math.random() * 3) * 60 * 60 * 1000 })
     }
   }, 8 * 60 * 1000)
+
+  // Caterpillar: spring days, inches along undergrowth, every 15-30 min
+  function scheduleCaterpillar(): void {
+    const delay = (15 + Math.random() * 15) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const m = new Date().getMonth()
+      const isSpringDay = (m >= 2 && m <= 5) && h >= 8 && h < 18
+      if (isSpringDay && !caterpillar) {
+        const w = process.stdout.columns || 80
+        const segCount = 3 + Math.floor(Math.random() * 4)
+        const startX = Math.floor(Math.random() * (w * 0.8))
+        caterpillar = {
+          segments: Array.from({ length: segCount }, (_, i) => startX - i),
+          dir: 1,
+          tickCount: 0,
+        }
+        setTimeout(() => { caterpillar = null }, (8 + Math.random() * 10) * 60 * 1000)
+      }
+      scheduleCaterpillar()
+    }, delay)
+  }
+  scheduleCaterpillar()
+
+  // Otter: spring/summer/autumn, swims through stream zone, every 20-40 min
+  function scheduleOtter(): void {
+    const delay = (20 + Math.random() * 20) * 60 * 1000
+    setTimeout(() => {
+      const m = new Date().getMonth()
+      const isWaterSeason = m >= 2 && m <= 9
+      if (isWaterSeason && !otter && (forest?.trees.length ?? 0) >= 10) {
+        const w = process.stdout.columns || 80
+        const bounds = getStreamBounds(forest!, w)
+        if (bounds) otter = { x: bounds.x - 3, diving: false, diveTimer: 0 }
+      }
+      scheduleOtter()
+    }, delay)
+  }
+  scheduleOtter()
 
   // Mushroom expiry tick: clean up expired ground mushrooms
   setInterval(() => {

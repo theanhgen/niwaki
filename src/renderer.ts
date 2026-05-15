@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[] } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[]; snail?: { x: number }; caterpillar?: { segments: number[]; dir: 1 | -1 }; otter?: { x: number; diving: boolean } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1453,6 +1453,49 @@ export function renderFrame(
       const midX = wx + Math.floor(span / 2)
       if (midX >= 0 && midX < width && !buffer[webY]![midX]?.color)
         buffer[webY]![midX] = { char: "◦", color: "#c8e8f8" }
+    }
+  }
+
+  // 8r. Snail — slow ground mover with slime trail, post-rain
+  if (options.snail) {
+    const { x: sx } = options.snail
+    const snailY = groundStart - 1
+    if (sx >= 1 && sx < width) {
+      buffer[snailY]![sx] = { char: "ə", color: "#9a8870" }
+      if (sx > 1 && !buffer[snailY]![sx - 1]?.color)
+        buffer[snailY]![sx - 1] = { char: "·", color: "#7a9898" }
+    }
+  }
+
+  // 8s. Caterpillar — multi-segment incher on undergrowth in spring
+  if (options.caterpillar) {
+    const { segments, dir } = options.caterpillar
+    const catY = groundStart - 1
+    const catColors = ["#5a9030", "#4a8020", "#6aa040"]
+    segments.forEach((x, i) => {
+      if (x < 0 || x >= width) return
+      const isHead = i === 0
+      const isTail = i === segments.length - 1
+      const char = isHead ? (dir > 0 ? "D" : "q") : isTail ? "·" : "∘"
+      const color = catColors[i % catColors.length]!
+      if (!buffer[catY]![x]?.color) buffer[catY]![x] = { char, color }
+    })
+  }
+
+  // 8t. Otter — swims through stream, dives occasionally
+  if (options.otter && forest.trees.length >= 10) {
+    const createdSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const streamX = Math.floor(width * 0.15 + hash(createdSeed * 13 + 77) % Math.floor(width * 0.65))
+    const streamW = 14 + hash(streamX * 7 + 88) % 8
+    const ox = options.otter.x
+    const otterY = groundStart + 1
+    if (ox >= streamX && ox < streamX + streamW && ox >= 0 && ox < width) {
+      if (!options.otter.diving) {
+        buffer[otterY]![ox] = { char: "o", color: "#7a5030" }
+        if (ox + 1 < width) buffer[otterY]![ox + 1] = { char: "o", color: "#6a4028" }
+      } else {
+        buffer[otterY]![ox] = { char: "~", color: "#4888a8" }
+      }
     }
   }
 

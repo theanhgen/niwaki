@@ -636,6 +636,21 @@ export function renderFrame(
     }
   }
 
+  // Purple loosestrife — late summer, tall spikes beside stream; vivid violet
+  if (season === "summer" && forest.trees.length >= 10) {
+    const m = now.getMonth()
+    if (m >= 6 && m <= 8) { // July-September
+      const plSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+      const plStreamX = Math.floor(width * 0.15 + hash(plSeed * 13 + 77) % Math.floor(width * 0.65))
+      for (let dx = -5; dx <= 5; dx++) {
+        const px = plStreamX + dx
+        if (px < 0 || px >= width) continue
+        if (!buffer[undergrowthY]![px]?.color && hash(px * 37 + plSeed + 55551) % 4 === 0)
+          buffer[undergrowthY]![px] = { char: "↑", color: "#9040b8" }
+      }
+    }
+  }
+
   // Dog rose — summer pink blooms in bramble/edge patches; hedgerow classic
   if (season === "summer" && forest.trees.length >= 8) {
     const roseSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -2862,6 +2877,34 @@ export function renderFrame(
       // Cap on undergrowth row
       if (!buffer[groundStart - 1]![mx]?.color)
         buffer[groundStart - 1]![mx] = { char: "∩", color: capColor }
+    }
+  }
+
+  // Song thrush anvil — spring, smashed snail shells beside a stone; `◎` anvil + `·` debris
+  if (season === "spring" && forest.trees.length >= 6) {
+    const anvilSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const ax = Math.floor(width * 0.3 + hash(anvilSeed * 11 + 22223) % Math.floor(width * 0.4))
+    if (!buffer[undergrowthY]![ax]?.color) buffer[undergrowthY]![ax] = { char: "◎", color: "#7a6848" }
+    for (let di = 1; di <= 3; di++) {
+      const sx = ax + di
+      if (sx < width && !buffer[undergrowthY]![sx]?.color) buffer[undergrowthY]![sx] = { char: "·", color: "#a89070" }
+    }
+  }
+
+  // Deer rut — October, two stags contest territory; `><` clash symbol between nearby trees
+  if (season === "autumn" && now.getMonth() === 9 && forest.trees.length >= 10) {
+    const largeTrees = forest.trees.filter(t => t.growth >= 0.8 && t.type !== "stump")
+    for (let i = 0; i < largeTrees.length - 1; i++) {
+      const ta = largeTrees[i]!
+      const tb = largeTrees[i + 1]!
+      const gap = tb.x - ta.x
+      if (gap < 6 || gap > 14) continue
+      const mid = Math.floor((ta.x + tb.x) / 2)
+      if (mid >= 0 && mid < width - 1 && !buffer[undergrowthY]![mid]?.color) {
+        buffer[undergrowthY]![mid] = { char: ">", color: "#8a5020" }
+        buffer[undergrowthY]![mid + 1] = { char: "<", color: "#8a5020" }
+      }
+      break // only one clash at a time
     }
   }
 

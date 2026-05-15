@@ -138,6 +138,7 @@ let swallows: { xf: number; y: number; speed: number; dy: number }[] = []
 let redKite: { xf: number; y: number; speed: number; angle: number } | null = null
 let waxwings: { xf: number; y: number; speed: number }[] = []
 let bullfinch: { x: number; speed: number } | null = null
+let peregrine: { x: number; yf: number; speed: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -224,6 +225,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     redKite: redKite ? { x: Math.floor(redKite.xf), y: redKite.y } : undefined,
     waxwings: waxwings.length > 0 ? waxwings.map(w => ({ x: Math.floor(w.xf), y: w.y })) : undefined,
     bullfinch: bullfinch ? { x: bullfinch.x } : undefined,
+    peregrine: peregrine ? { x: peregrine.x, y: Math.floor(peregrine.yf) } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -498,6 +500,16 @@ export async function viewer(): Promise<void> {
     // Waxwings — Bohemian berry-stripper flocks in winter; fast across canopy top
     waxwings = waxwings.filter(w => w.xf > -4 && w.xf < (process.stdout.columns || 80) + 4)
     for (const w of waxwings) { w.xf += w.speed }
+    // Peregrine — fastest animal alive; stoops vertically through sky at 320km/h
+    if (peregrine) {
+      peregrine.yf += peregrine.speed
+      if (peregrine.yf > SKY_ROWS + 2) {
+        // Scatter birds on strike
+        birds = birds.filter(() => Math.random() > 0.7)
+        rabbits = rabbits.filter(() => Math.random() > 0.5)
+        peregrine = null
+      }
+    }
     // Bullfinch — rose-red male at berry bushes; slow hops along hedge
     if (bullfinch) {
       if (Math.random() < 0.5) bullfinch.x += bullfinch.speed
@@ -1831,6 +1843,20 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleBullfinchSpawn()
+
+  // Peregrine falcon — rare stooping predator; appears every 45-90 min, any season
+  function schedulePeregrineStoop(): void {
+    const delay = (45 + Math.random() * 45) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      if (!peregrine && h >= 7 && h < 19 && (forest?.trees.length ?? 0) >= 5 && Math.random() < 0.4) {
+        const width = process.stdout.columns || 80
+        peregrine = { x: Math.floor(5 + Math.random() * (width - 10)), yf: 0, speed: 1.5 }
+      }
+      schedulePeregrineStoop()
+    }, delay)
+  }
+  schedulePeregrineStoop()
 
   // Waxwings — irruptive Scandinavian visitors in berry years; Nov-Feb; every 2-4 hours
   setInterval(() => {

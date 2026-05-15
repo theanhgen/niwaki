@@ -393,7 +393,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[]; snail?: { x: number }; caterpillar?: { segments: number[]; dir: 1 | -1 }; otter?: { x: number; diving: boolean }; berries?: { x: number; color: string }[]; mossPatch?: boolean; seedDrift?: { x: number; y: number; char: string }[]; badger?: { x: number }; kingfisher?: { x: number; diving: boolean }; boar?: { x: number; rooting: boolean }; dawnChorus?: { x: number; y: number; life: number }[]; beetle?: { x: number }; puddles?: number[]; groundFog?: boolean; moth?: { x: number; y: number; color: string }; migration?: { x: number; y: number; size: number }; raccoon?: { x: number; washing: boolean }; moleHills?: number[]; murmuration?: { x: number; y: number; seed: number }; mayflyHatch?: boolean; vole?: { x: number }; kestrel?: { x: number; y: number }; hedgehog?: { x: number; rolled: boolean }; salamander?: { x: number }; jay?: { x: number; carrying: boolean; leftward: boolean }; aurora?: { intensity: number; phase: number }; buzzard?: { x: number; y: number }; wren?: { x: number }; pineMarten?: { x: number; y: number }; pheasant?: { x: number; flushed: boolean }; sparrowhawk?: { x: number; y: number; leftward: boolean }; titFlock?: { x: number; y: number }[]; goldfinch?: { x: number; paused: boolean }; barnOwl?: { x: number; y: number }; slug?: { x: number }; snake?: { x: number; basking: boolean }; toadMigration?: { x: number }[]; hare?: { x: number; frozen: boolean; leftward: boolean }; raven?: { x: number; y: number }; swallows?: { x: number; y: number }[]; redKite?: { x: number; y: number }; waxwings?: { x: number; y: number }[]; bullfinch?: { x: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] }; blight?: { zones: number[]; intensity: number; seed: number }; frost?: { intensity: number; seed: number }; lightningScars?: { x: number }[]; fallingLeaves?: { x: number; y: number; color: string; char: string }[]; groundMushrooms?: number[]; morningDew?: boolean; pollenDrift?: { x: number; y: number }[]; spiderWebs?: { x: number; span: number }[]; snail?: { x: number }; caterpillar?: { segments: number[]; dir: 1 | -1 }; otter?: { x: number; diving: boolean }; berries?: { x: number; color: string }[]; mossPatch?: boolean; seedDrift?: { x: number; y: number; char: string }[]; badger?: { x: number }; kingfisher?: { x: number; diving: boolean }; boar?: { x: number; rooting: boolean }; dawnChorus?: { x: number; y: number; life: number }[]; beetle?: { x: number }; puddles?: number[]; groundFog?: boolean; moth?: { x: number; y: number; color: string }; migration?: { x: number; y: number; size: number }; raccoon?: { x: number; washing: boolean }; moleHills?: number[]; murmuration?: { x: number; y: number; seed: number }; mayflyHatch?: boolean; vole?: { x: number }; kestrel?: { x: number; y: number }; hedgehog?: { x: number; rolled: boolean }; salamander?: { x: number }; jay?: { x: number; carrying: boolean; leftward: boolean }; aurora?: { intensity: number; phase: number }; buzzard?: { x: number; y: number }; wren?: { x: number }; pineMarten?: { x: number; y: number }; pheasant?: { x: number; flushed: boolean }; sparrowhawk?: { x: number; y: number; leftward: boolean }; titFlock?: { x: number; y: number }[]; goldfinch?: { x: number; paused: boolean }; barnOwl?: { x: number; y: number }; slug?: { x: number }; snake?: { x: number; basking: boolean }; toadMigration?: { x: number }[]; hare?: { x: number; frozen: boolean; leftward: boolean }; raven?: { x: number; y: number }; swallows?: { x: number; y: number }[]; redKite?: { x: number; y: number }; waxwings?: { x: number; y: number }[]; bullfinch?: { x: number }; peregrine?: { x: number; y: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1548,6 +1548,18 @@ export function renderFrame(
       buffer[rky]![rkx] = { char: "∧", color: "#c05820" }
       buffer[rky]![rkx - 1] = { char: "=", color: "#c05820" }
       buffer[rky]![rkx + 1] = { char: "=", color: "#c05820" }
+    }
+  }
+
+  // Peregrine falcon — fastest living creature; stoops vertically like a dark bullet; `!` trail
+  if (options.peregrine && options.peregrine.x >= 0 && options.peregrine.x < width) {
+    const { x: px, y: py } = options.peregrine
+    if (py >= 0 && py < buffer.length)
+      buffer[py]![px] = { char: "!", color: "#2a3848" }
+    for (let trail = 1; trail <= 2; trail++) {
+      const ty = py - trail
+      if (ty >= 0 && ty < SKY_ROWS && !buffer[ty]![px]?.color)
+        buffer[ty]![px] = { char: "·", color: lerpColor("#2a3848", getSkyColor(ty, period, blend), trail * 0.4) }
     }
   }
 
@@ -2838,6 +2850,21 @@ export function renderFrame(
       // Cap on undergrowth row
       if (!buffer[groundStart - 1]![mx]?.color)
         buffer[groundStart - 1]![mx] = { char: "∩", color: capColor }
+    }
+  }
+
+  // Gossamer silk — Indian summer, floating spider silk threads catch light in autumn tree rows
+  if (season === "autumn" && (period === "dawn" || period === "day") && !options.isRaining && forest.trees.length >= 8) {
+    const m = now.getMonth()
+    if (m === 8 || m === 9) { // September-October warm spell
+      const seed5 = options.twinkleSeed ?? 0
+      for (let y = SKY_ROWS + 1; y < groundStart - 2; y++) {
+        for (let x = 0; x < width; x++) {
+          if (hash(x * 71 + y * 43 + seed5 * 13 + 11117) % 22 !== 0) continue
+          if (!buffer[y]![x]?.color)
+            buffer[y]![x] = { char: "─", color: lerpColor("#c8d0b8", "#e8e8d0", (x * 13 + y * 7) % 10 / 10) }
+        }
+      }
     }
   }
 

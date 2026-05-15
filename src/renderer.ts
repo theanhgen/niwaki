@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[] } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1111,6 +1111,77 @@ export function renderFrame(
 
   // 8e. Fog (wilt)
   applyFog(buffer, effectiveWilt, width)
+
+  // 8f. Wildfire — smoke → burning → ember → ash
+  if (options.wildfire) {
+    const { x: fx, width: fw, stage, seed } = options.wildfire
+    for (let dx = -4; dx < fw + 4; dx++) {
+      const cx = fx + dx
+      if (cx < 0 || cx >= width) continue
+      const inCore = dx >= 0 && dx < fw
+      const h = hash(cx * 37 + seed * 19 + 44441)
+
+      if (stage === "smoke") {
+        // Pre-fire: grey smoke wisps in sky above zone, no flames yet
+        if (!inCore) continue
+        const smokeY = h % (SKY_ROWS - 2) + 1
+        if (!buffer[smokeY]![cx]?.color)
+          buffer[smokeY]![cx] = { char: "░", color: "#606868" }
+
+      } else if (stage === "burning") {
+        // Sky glow — warm orange tints bottom 2 sky rows above fire
+        for (let y = SKY_ROWS - 2; y < SKY_ROWS; y++) {
+          buffer[y]![cx] = { char: "█", color: lerpColor(getSkyColor(y, period, blend), "#d03808", inCore ? 0.55 : 0.2) }
+        }
+        if (inCore) {
+          // Fire over tree and undergrowth rows
+          for (let y = SKY_ROWS; y < groundStart; y++) {
+            const t = (y - SKY_ROWS) / TREE_ROWS
+            const flicker = (h + y) % 3
+            const fireColor = lerpColor("#ffe060", "#d02008", Math.min(1, t + flicker * 0.08))
+            const fireChar = y === SKY_ROWS ? "▲" : flicker === 0 ? "|" : flicker === 1 ? "!" : "▲"
+            buffer[y]![cx] = { char: fireChar, color: fireColor }
+          }
+          buffer[groundStart]![cx] = { char: "█", color: "#1a0c06" }
+        }
+        // Smoke drifting up from fire and around it
+        if (h % 4 !== 0) {
+          const smokeY = h % (SKY_ROWS - 1)
+          if (!buffer[smokeY]![cx]?.color || buffer[smokeY]![cx]!.char === "█")
+            buffer[smokeY]![cx] = { char: h % 2 === 0 ? "░" : "▒", color: "#585858" }
+        }
+
+      } else if (stage === "ember") {
+        if (!inCore) continue
+        // Charred trunk silhouettes in dark brown
+        for (let y = SKY_ROWS; y < groundStart - 1; y++) {
+          if (buffer[y]![cx]?.color) {
+            buffer[y]![cx] = { char: "|", color: "#2e1a0e" }
+            break
+          }
+        }
+        // Sparse glowing embers on undergrowth
+        if (h % 4 === 0)
+          buffer[groundStart - 1]![cx] = { char: "·", color: lerpColor("#c02808", "#e06018", (h >> 4) % 2 === 0 ? 0 : 1) }
+        buffer[groundStart]![cx] = { char: "█", color: "#1a0c06" }
+        // Faint residual smoke
+        if (h % 7 === 0 && !buffer[1]![cx]?.color)
+          buffer[1]![cx] = { char: "░", color: "#4a4848" }
+
+      } else if (stage === "ash") {
+        if (!inCore) continue
+        // Charred skeleton — topmost tree cell per column becomes a stump char
+        for (let y = SKY_ROWS; y < groundStart - 1; y++) {
+          if (buffer[y]![cx]?.color) {
+            buffer[y]![cx] = { char: "|", color: "#3a2a1e" }
+            break
+          }
+        }
+        // Ash-covered ground
+        buffer[groundStart]![cx] = { char: h % 4 === 0 ? "░" : "█", color: "#2e2218" }
+      }
+    }
+  }
 
   // 9. Output loop with season + wilt color composition
   const lines: string[] = []

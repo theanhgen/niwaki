@@ -84,6 +84,7 @@ let owl: { x: number; y: number } | null = null
 let butterfly: { x: number; y: number; color: string; dx: number; dy: number } | null = null
 let clouds: { xf: number; y: number; width: number; density: 0|1|2 }[] = []
 let crows: { x: number; speed: number; pecking: boolean; peckTimer: number }[] = []
+let wildfire: { x: number; width: number; stage: string; until: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -116,6 +117,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     butterfly: butterfly ?? undefined,
     clouds: clouds.length > 0 ? clouds.map(c => ({ x: Math.floor(c.xf), y: c.y, width: c.width, density: c.density })) : undefined,
     crows: crows.length > 0 ? crows.map(c => ({ x: c.x, pecking: c.pecking })) : undefined,
+    wildfire: wildfire ? { x: wildfire.x, width: wildfire.width, stage: wildfire.stage, seed: twinkleSeed } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -517,6 +519,42 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleCrowVisit()
+
+  // Wildfire: summer/autumn, rare trigger, 4-stage arc — smoke → burning → ember → ash
+  setInterval(() => {
+    const now = Date.now()
+    const m = new Date().getMonth()
+    const isSummerAutumn = m >= 5 && m <= 9
+    if (wildfire) {
+      if (now >= wildfire.until) {
+        if (wildfire.stage === "smoke") {
+          wildfire.stage = "burning"
+          wildfire.until = now + (5 + Math.random() * 8) * 60 * 1000
+        } else if (wildfire.stage === "burning") {
+          wildfire.stage = "ember"
+          wildfire.until = now + (3 + Math.random() * 5) * 60 * 1000
+        } else if (wildfire.stage === "ember") {
+          wildfire.stage = "ash"
+          wildfire.until = now + (5 + Math.random() * 8) * 60 * 1000
+        } else {
+          wildfire = null
+        }
+      } else if (wildfire.stage === "burning") {
+        const w = process.stdout.columns || 80
+        const maxWidth = Math.min(Math.floor(w * 0.4), wildfire.width + 2 + windStrength)
+        wildfire.width = maxWidth
+      }
+    } else if (isSummerAutumn && !isRaining && (forest?.trees.length ?? 0) >= 15 && Math.random() < 0.001) {
+      const w = process.stdout.columns || 80
+      const startX = Math.floor(w * 0.1 + Math.random() * w * 0.7)
+      wildfire = {
+        x: startX,
+        width: 8 + Math.floor(Math.random() * 8),
+        stage: "smoke",
+        until: now + (2 + Math.random() * 2) * 60 * 1000,
+      }
+    }
+  }, 30 * 1000)
 
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn
   setInterval(() => {

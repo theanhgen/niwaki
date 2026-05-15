@@ -140,6 +140,7 @@ let waxwings: { xf: number; y: number; speed: number }[] = []
 let bullfinch: { x: number; speed: number } | null = null
 let peregrine: { x: number; yf: number; speed: number } | null = null
 let dipper: { x: number; bobTimer: number; bobbing: boolean } | null = null
+let fieldfares: { xf: number; y: number; speed: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -228,6 +229,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     bullfinch: bullfinch ? { x: bullfinch.x } : undefined,
     peregrine: peregrine ? { x: peregrine.x, y: Math.floor(peregrine.yf) } : undefined,
     dipper: dipper ? { x: dipper.x, bobbing: dipper.bobbing } : undefined,
+    fieldfares: fieldfares.length > 0 ? fieldfares.map(f => ({ x: Math.floor(f.xf), y: f.y })) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -502,6 +504,9 @@ export async function viewer(): Promise<void> {
     // Waxwings — Bohemian berry-stripper flocks in winter; fast across canopy top
     waxwings = waxwings.filter(w => w.xf > -4 && w.xf < (process.stdout.columns || 80) + 4)
     for (const w of waxwings) { w.xf += w.speed }
+    // Fieldfares — Scandinavian winter thrushes; loose flock, fast direct flight
+    fieldfares = fieldfares.filter(f => f.xf > -4 && f.xf < (process.stdout.columns || 80) + 4)
+    for (const f of fieldfares) { f.xf += f.speed }
     // Peregrine — fastest animal alive; stoops vertically through sky at 320km/h
     if (peregrine) {
       peregrine.yf += peregrine.speed
@@ -1881,6 +1886,24 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleDipperSpawn()
+
+  // Fieldfares/Redwings — Scandinavian winter thrushes, arrive Oct-Feb in loose flocks; every 60-120 min
+  setInterval(() => {
+    const m = new Date().getMonth()
+    const h = new Date().getHours()
+    if ((m >= 2 && m <= 8) || h < 7 || h > 18 || fieldfares.length > 0) return
+    if (Math.random() > 0.4 || (forest?.trees.length ?? 0) < 5) return
+    const width = process.stdout.columns || 80
+    const count = 6 + Math.floor(Math.random() * 10)
+    const fromLeft = Math.random() < 0.5
+    for (let i = 0; i < count; i++) {
+      fieldfares.push({
+        xf: fromLeft ? -3 - i * 2 : width + 3 + i * 2,
+        y: 1 + Math.floor(Math.random() * 3),
+        speed: fromLeft ? 1.8 + Math.random() * 0.4 : -(1.8 + Math.random() * 0.4)
+      })
+    }
+  }, (60 + Math.random() * 60) * 60 * 1000)
 
   // Waxwings — irruptive Scandinavian visitors in berry years; Nov-Feb; every 2-4 hours
   setInterval(() => {

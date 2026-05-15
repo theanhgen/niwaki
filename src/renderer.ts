@@ -701,6 +701,26 @@ export function renderFrame(
     }
   }
 
+  // Stream bank rushes — tall `|` reeds at stream margins, spring-autumn
+  if (season !== "winter" && forest.trees.length >= 10) {
+    const createdSeedR = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const rStreamX = Math.floor(width * 0.15 + hash(createdSeedR * 13 + 77) % Math.floor(width * 0.65))
+    const rStreamW = 14 + hash(rStreamX * 7 + 88) % 8
+    const reedColor = season === "autumn" ? "#8a7030" : "#4a7830"
+    for (const side of [-1, rStreamW] as const) {
+      const rx = rStreamX + side
+      if (rx < 0 || rx >= width) continue
+      for (let dy = 1; dy <= 2; dy++) {
+        const ry = groundStart - dy
+        if (ry < SKY_ROWS) break
+        if (!buffer[ry]![rx]?.color)
+          buffer[ry]![rx] = { char: dy === 1 ? "╷" : "╷", color: reedColor }
+      }
+      if (!buffer[groundStart]![rx]?.color)
+        buffer[groundStart]![rx] = { char: "│", color: reedColor }
+    }
+  }
+
   // Stream fish — brief silver dart crossing the water
   if (options.streamFish) {
     const { x: fx, leftward } = options.streamFish
@@ -1206,6 +1226,35 @@ export function renderFrame(
       }
       if (canopyRows >= 3 && hash(x * 41 + forest.trees.length * 7 + 22223) % 4 === 0)
         buffer[undergrowthY]![x] = { char: "∇", color: "#2a5020" }
+    }
+  }
+
+  // Fallen fruit — summer/autumn under fruit-bearing species, `○` drops on ground
+  if (season === "summer" || season === "autumn") {
+    const fruitSpecies: Record<string, string> = { cherry: "#c01828", apple: "#c83820", olive: "#6a7820", ginkgo: "#c8a820" }
+    for (const tree of forest.trees) {
+      const fruitColor = fruitSpecies[tree.type]
+      if (!fruitColor || tree.growth < 0.7) continue
+      for (let dx = -3; dx <= 3; dx++) {
+        const fx = tree.x + dx
+        if (fx < 0 || fx >= width) continue
+        if (hash(fx * 29 + tree.id * 11 + 55553) % 9 === 0 && !buffer[undergrowthY]![fx]?.color)
+          buffer[undergrowthY]![fx] = { char: "○", color: fruitColor }
+      }
+    }
+  }
+
+  // Surface roots — very old full-growth trees (growth=1, ancient forest), `─` on ground level
+  if (forest.trees.length >= 50) {
+    for (const tree of forest.trees) {
+      if (tree.growth < 1.0 || tree.type === "stump") continue
+      if (hash(tree.id * 43 + 77773) % 6 !== 0) continue
+      for (let dx = 1; dx <= 3; dx++) {
+        const rx = tree.x + dx
+        if (rx >= width) break
+        if (buffer[undergrowthY]![rx]?.color) break
+        buffer[undergrowthY]![rx] = { char: "─", color: lerpColor(biome.ground[0]!, "#5a3818", 0.4) }
+      }
     }
   }
 

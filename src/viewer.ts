@@ -512,7 +512,14 @@ export async function viewer(): Promise<void> {
   setInterval(() => {
     const width = process.stdout.columns || 80
     foxes = foxes.filter((f) => f.x <= width + 2)
-    foxes.forEach((f) => { f.x += f.speed })
+    foxes.forEach((f) => {
+      // Fox pounces on vole: freeze briefly then dash when vole is 3-8 cols ahead
+      if (vole && Math.abs(vole.x - f.x) >= 3 && Math.abs(vole.x - f.x) <= 8 && vole.x > f.x) {
+        if (Math.random() < 0.3) { vole = null; f.x += 6 }  // successful pounce
+      } else {
+        f.x += f.speed
+      }
+    })
     rabbits = rabbits.filter((r) => r.x <= width + 2)
     rabbits.forEach((r) => { r.x += r.speed })
     if (squirrel) {

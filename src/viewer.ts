@@ -107,6 +107,7 @@ let kingfisher: { x: number; diving: boolean; diveTimer: number; until: number }
 let boar: { x: number; speed: number; rootingTimer: number } | null = null
 let dawnChorus: { x: number; y: number; life: number }[] = []
 let beetle: { x: number; speed: number } | null = null
+let puddles: { x: number; until: number }[] = []
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -162,6 +163,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     boar: boar ? { x: boar.x, rooting: boar.rootingTimer > 0 } : undefined,
     dawnChorus: dawnChorus.length > 0 ? dawnChorus : undefined,
     beetle: beetle ? { x: beetle.x } : undefined,
+    puddles: puddles.length > 0 ? puddles.map(p => p.x) : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -441,6 +443,13 @@ export async function viewer(): Promise<void> {
       groundMushrooms = groundMushrooms.filter(m => now2 < m.until)
       for (let i = 0; i < mushroomCount; i++) {
         groundMushrooms.push({ x: Math.floor(Math.random() * width), until: now2 + mushroomDuration })
+      }
+      // Puddles form after rain — 2-4 depressions, evaporate after 15-35 min
+      const puddleCount = 2 + Math.floor(Math.random() * 3)
+      const puddleDuration = (15 + Math.random() * 20) * 60 * 1000
+      puddles = puddles.filter(p => now2 < p.until)
+      for (let i = 0; i < puddleCount; i++) {
+        puddles.push({ x: Math.floor(Math.random() * width), until: now2 + puddleDuration })
       }
     } else if (!isRaining && Math.random() < 0.20) {
       isRaining = true
@@ -1028,10 +1037,11 @@ export async function viewer(): Promise<void> {
     mossPatch = isDamp
   }, 3 * 60 * 1000)
 
-  // Mushroom expiry tick: clean up expired ground mushrooms
+  // Mushroom + puddle expiry tick
   setInterval(() => {
     const now = Date.now()
     groundMushrooms = groundMushrooms.filter(m => now < m.until)
+    puddles = puddles.filter(p => now < p.until && !isRaining)
   }, 60 * 1000)
 
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn

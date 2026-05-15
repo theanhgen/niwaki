@@ -123,6 +123,8 @@ let jay: { x: number; speed: number; carrying: boolean } | null = null
 let aurora: { intensity: number; phase: number } | null = null
 let buzzard: { xf: number; y: number; angle: number; speed: number } | null = null
 let wren: { x: number; speed: number; pauseTimer: number } | null = null
+let pineMarten: { x: number; y: number; speed: number } | null = null
+let pheasant: { x: number; speed: number; flushed: boolean } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -194,6 +196,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     aurora: aurora ?? undefined,
     buzzard: buzzard ? { x: Math.floor(buzzard.xf), y: buzzard.y } : undefined,
     wren: wren ? { x: wren.x } : undefined,
+    pineMarten: pineMarten ? { x: pineMarten.x, y: pineMarten.y } : undefined,
+    pheasant: pheasant ? { x: pheasant.x, flushed: pheasant.flushed } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -679,6 +683,25 @@ export async function viewer(): Promise<void> {
         if (Math.random() < 0.15) wren.pauseTimer = 2 + Math.floor(Math.random() * 5)
       }
       if (wren.x > w + 3 || wren.x < -3) wren = null
+    }
+    // Pine marten — fast arboreal predator dashing through lower canopy
+    if (pineMarten) {
+      const w = process.stdout.columns || 80
+      pineMarten.x += pineMarten.speed
+      if (pineMarten.x > w + 4 || pineMarten.x < -4) pineMarten = null
+    }
+    // Pheasant — slow ground bird; flushes (bursts upward) when predator nearby
+    if (pheasant) {
+      const w = process.stdout.columns || 80
+      if (!pheasant.flushed) {
+        pheasant.x += pheasant.speed
+        const predatorClose = foxes.some(f => Math.abs(f.x - pheasant!.x) < 6) || !!hawk
+        if (predatorClose && Math.random() < 0.2) pheasant.flushed = true
+      }
+      if (pheasant.x > w + 4 || pheasant.x < -4 || pheasant.flushed) {
+        if (pheasant.flushed) setTimeout(() => { pheasant = null }, 2000)
+        else pheasant = null
+      }
     }
   }, 400)
 

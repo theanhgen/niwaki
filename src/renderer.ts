@@ -699,6 +699,21 @@ export function renderFrame(
     }
   }
 
+  // Water striders — tiny `×` insects walking on stream surface, spring-autumn
+  if (season !== "winter" && forest.trees.length >= 10) {
+    const createdSeedW = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const wsStreamX = Math.floor(width * 0.15 + hash(createdSeedW * 13 + 77) % Math.floor(width * 0.65))
+    const wsStreamW = 14 + hash(wsStreamX * 7 + 88) % 8
+    const seedW = options.twinkleSeed ?? 0
+    const striderCount = 2 + hash(seedW * 7 + 33331) % 3
+    for (let i = 0; i < striderCount; i++) {
+      const sx = wsStreamX + 1 + hash(i * 17 + seedW * 5 + 44441) % (wsStreamW - 2)
+      if (sx < 0 || sx >= width) continue
+      if (buffer[groundStart + 1]![sx]?.char === "~" || buffer[groundStart + 1]![sx]?.char === "≈")
+        buffer[groundStart + 1]![sx] = { char: "×", color: "#3a5870" }
+    }
+  }
+
   // 6. Composite trees — full-stage trees get a stable per-tree height bonus for natural variation
   const treeBaseY = groundStart - 1
   for (const tree of forest.trees) {
@@ -906,11 +921,12 @@ export function renderFrame(
     }
   }
 
-  // 7b2. Squirrel — dash-pause-dash along undergrowth, bushy ø tail
+  // 7b2. Squirrel — dash-pause-dash along undergrowth; autumn pauses = nut burying (v dig)
   if (options.squirrel && options.squirrel.x >= 1 && options.squirrel.x < width) {
     const sx = options.squirrel.x
-    buffer[undergrowthY]![sx] = { char: ">", color: "#c09040" }
-    buffer[undergrowthY]![sx - 1] = { char: "ø", color: "#d0a850" }
+    const isBurying = season === "autumn" && hash(sx * 13 + (options.twinkleSeed ?? 0) * 7 + 22229) % 4 === 0
+    buffer[undergrowthY]![sx] = { char: isBurying ? "v" : ">", color: "#c09040" }
+    buffer[undergrowthY]![sx - 1] = { char: isBurying ? "·" : "ø", color: "#d0a850" }
   }
 
   // Weasel — fastest ground animal, turns ermine-white in winter
@@ -1141,6 +1157,21 @@ export function renderFrame(
       }
       if (canopyRows >= 3 && hash(x * 41 + forest.trees.length * 7 + 22223) % 4 === 0)
         buffer[undergrowthY]![x] = { char: "∇", color: "#2a5020" }
+    }
+  }
+
+  // Wild garlic — late spring (April-May), white star blooms in shaded undergrowth
+  if (season === "spring") {
+    const m = now.getMonth()
+    const isGarlicTime = m >= 3 && m <= 4  // April-May
+    if (isGarlicTime) {
+      for (let x = 0; x < width; x++) {
+        if (buffer[undergrowthY]![x]?.color) continue
+        let canopyAbove = 0
+        for (let y = SKY_ROWS; y < groundStart - 1; y++) { if (buffer[y]![x]?.color) canopyAbove++ }
+        if (canopyAbove >= 2 && hash(x * 37 + forest.trees.length * 19 + 88883) % 8 === 0)
+          buffer[undergrowthY]![x] = { char: "∗", color: "#e8f0e0" }
+      }
     }
   }
 

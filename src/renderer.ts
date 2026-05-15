@@ -711,6 +711,52 @@ export function renderFrame(
     }
   }
 
+  // Owl pellet — dawn, compressed fur/bone at base of owl's roost tree
+  if ((period === "dawn" || (period === "night" && blend < 0.3)) && forest.trees.length > 0) {
+    const roostIdx2 = hash(forest.trees.length * 13 + 42) % forest.trees.length
+    const roostTree = forest.trees[roostIdx2]!
+    if (roostTree.x >= 0 && roostTree.x < width && !buffer[groundStart]![roostTree.x]?.color)
+      buffer[groundStart]![roostTree.x] = { char: "◎", color: "#706050" }
+  }
+
+  // Fox earth entrance — triangular den hole in ground near old forest edges
+  if (forest.trees.length >= 20) {
+    const foxSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const foxX = 2 + hash(foxSeed * 17 + 33337) % Math.floor(width * 0.2)
+    if (!buffer[groundStart]![foxX]?.color)
+      buffer[groundStart]![foxX] = { char: "▽", color: "#4a2c10" }
+    // Earth mound beside entrance
+    if (foxX + 1 < width && !buffer[groundStart]![foxX + 1]?.color)
+      buffer[groundStart]![foxX + 1] = { char: "░", color: lerpColor(biome.ground[0]!, "#8a5830", 0.5) }
+  }
+
+  // Ancient tree gnarling — root buttresses and gnarled bark on very old trees
+  if (forest.trees.length >= 50) {
+    for (const tree of forest.trees) {
+      if (tree.growth < 1.0 || tree.type === "stump") continue
+      if (hash(tree.id * 89 + 77777) % 4 !== 0) continue // ~25% of fully grown trees
+      // Visible surface root
+      for (let dx = -2; dx <= 2; dx++) {
+        const rx = tree.x + dx
+        if (rx < 0 || rx >= width || rx === tree.x) continue
+        if (!buffer[groundStart - 1]![rx]?.color)
+          buffer[groundStart - 1]![rx] = { char: "─", color: lerpColor(biome.ground[0]!, "#8a5030", 0.4) }
+      }
+    }
+  }
+
+  // Nettle bed — stinging nettles in disturbed/open patches, spring-summer
+  if ((season === "spring" || season === "summer") && forest.trees.length >= 15) {
+    const nettleSeed = forest.createdAt.slice(0, 10).split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+    const nettleX = Math.floor(width * 0.6 + hash(nettleSeed * 11 + 44443) % Math.floor(width * 0.3))
+    for (let dx = 0; dx < 5; dx++) {
+      const nx = nettleX + dx
+      if (nx >= width) continue
+      if (!buffer[undergrowthY]![nx]?.color)
+        buffer[undergrowthY]![nx] = { char: "↑", color: "#507830" }
+    }
+  }
+
   // Robin — perches on stumps and low branches year-round; red-orange breast dot
   for (const tree of forest.trees) {
     if (tree.type !== "stump" && tree.growth < 0.85) continue

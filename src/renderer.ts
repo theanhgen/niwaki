@@ -682,6 +682,25 @@ export function renderFrame(
     }
   }
 
+  // Catkins — birch and willow trees dangle yellow-green catkins in early spring
+  if (season === "spring" && forest.trees.length >= 3) {
+    const m = now.getMonth()
+    if (m >= 1 && m <= 4) { // Feb-May
+      const catkinSpecies = ["birch", "willow"]
+      for (const tree of forest.trees) {
+        if (!catkinSpecies.includes(tree.type) || tree.growth < 0.4) continue
+        const catkinColor = tree.type === "birch" ? "#c8c830" : "#a8b828"
+        for (let dx = -3; dx <= 3; dx++) {
+          const cx = tree.x + dx
+          if (cx < 0 || cx >= width) continue
+          if (hash(cx * 23 + tree.id * 19 + 55557) % 3 !== 0) continue
+          if (!buffer[undergrowthY]![cx]?.color)
+            buffer[undergrowthY]![cx] = { char: "∿", color: catkinColor }
+        }
+      }
+    }
+  }
+
   // Bracken fern — summer/autumn, distinctive fronds in undergrowth near mature trees
   if ((season === "summer" || season === "autumn") && forest.trees.length >= 10) {
     for (const tree of forest.trees) {
@@ -850,6 +869,19 @@ export function renderFrame(
     for (let x = 0; x < width; x++) {
       const snowChar = hash(x * 13 + 77) % 3 === 0 ? "░" : "█"
       buffer[groundStart]![x] = { char: snowChar, color: lerpColor(biome.ground[0]!, "#c8d0d8", 0.6) }
+    }
+  }
+
+  // Icicles — winter, drip from low branches onto snow; pale ice-blue hanging spikes
+  if (season === "winter" && !options.isRaining) {
+    for (const tree of forest.trees) {
+      if (tree.growth < 0.5 || tree.type === "stump") continue
+      for (let i = 0; i < 3; i++) {
+        const ix = tree.x - 2 + i * 2 + hash(tree.id * 11 + i * 7 + 33339) % 3 - 1
+        if (ix < 0 || ix >= width) continue
+        if (!buffer[groundStart]![ix]?.color)
+          buffer[groundStart]![ix] = { char: "|", color: "#b0d8f4" }
+      }
     }
   }
 

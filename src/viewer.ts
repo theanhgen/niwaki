@@ -106,6 +106,7 @@ let badger: { x: number; speed: number } | null = null
 let kingfisher: { x: number; diving: boolean; diveTimer: number; until: number } | null = null
 let boar: { x: number; speed: number; rootingTimer: number } | null = null
 let dawnChorus: { x: number; y: number; life: number }[] = []
+let beetle: { x: number; speed: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -160,6 +161,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     kingfisher: kingfisher ? { x: kingfisher.x, diving: kingfisher.diving } : undefined,
     boar: boar ? { x: boar.x, rooting: boar.rootingTimer > 0 } : undefined,
     dawnChorus: dawnChorus.length > 0 ? dawnChorus : undefined,
+    beetle: beetle ? { x: beetle.x } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -311,6 +313,11 @@ export async function viewer(): Promise<void> {
     for (const s of seedDrift) {
       s.yf += 0.12
       s.xf += s.dx
+    }
+    // Ground beetle — fast, moves 2 cols per tick, clears when off-screen
+    if (beetle) {
+      beetle.x += beetle.speed
+      if (beetle.x > width + 2) beetle = null
     }
     // Snail — moves 1 char every 8 ticks (~2s), clears when off-screen
     if (snail) {
@@ -979,6 +986,16 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   scheduleBoar()
+
+  // Ground beetle: any season/time, fast solitary insect, every 5-12 min
+  function scheduleBeetle(): void {
+    const delay = (5 + Math.random() * 7) * 60 * 1000
+    setTimeout(() => {
+      if (!beetle) beetle = { x: -1, speed: 2 }
+      scheduleBeetle()
+    }, delay)
+  }
+  scheduleBeetle()
 
   // Berry clusters: summer/autumn, stable ground feature, refresh each season
   setInterval(() => {

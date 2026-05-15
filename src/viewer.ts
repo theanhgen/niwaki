@@ -87,6 +87,7 @@ let crows: { x: number; speed: number; pecking: boolean; peckTimer: number }[] =
 let wildfire: { x: number; width: number; stage: string; until: number } | null = null
 let beetles: { treePositions: { x: number; radius: number }[]; intensity: number; peakReached: boolean } | null = null
 let drought: { intensity: number; fadingOut: boolean } | null = null
+let blowdown: { seed: number; fallen: { x: number; dir: 1 | -1 }[]; until: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -122,6 +123,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     wildfire: wildfire ? { x: wildfire.x, width: wildfire.width, stage: wildfire.stage, seed: twinkleSeed } : undefined,
     beetles: beetles ? { zones: beetles.treePositions, intensity: beetles.intensity } : undefined,
     drought: drought ? { intensity: drought.intensity } : undefined,
+    blowdown: blowdown ? { seed: blowdown.seed, fallen: blowdown.fallen } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -614,6 +616,24 @@ export async function viewer(): Promise<void> {
       drought = { intensity: 0.05, fadingOut: false }
     }
   }, 3 * 60 * 1000)
+
+  // Storm blowdown: rare sudden event, any season, fells 2-5 trees, visual lasts 8-20 min
+  setInterval(() => {
+    const now = Date.now()
+    if (blowdown) {
+      if (now >= blowdown.until) blowdown = null
+    } else if (!wildfire && (forest?.trees.length ?? 0) >= 8 && Math.random() < 0.0006) {
+      const trees = (forest?.trees ?? []).filter(t => t.type !== "stump" && t.growth > 0.3)
+      if (trees.length < 4) return
+      const count = 2 + Math.floor(Math.random() * 4)
+      const chosen = trees.sort(() => Math.random() - 0.5).slice(0, count)
+      blowdown = {
+        seed: Math.floor(Math.random() * 99999),
+        fallen: chosen.map(t => ({ x: t.x, dir: (Math.random() < 0.5 ? 1 : -1) as 1 | -1 })),
+        until: now + (8 + Math.random() * 12) * 60 * 1000,
+      }
+    }
+  }, 45 * 1000)
 
   // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn
   setInterval(() => {

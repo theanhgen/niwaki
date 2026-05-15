@@ -391,7 +391,7 @@ function drawCloud(
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number }; butterfly?: { x: number; y: number; color: string }; clouds?: { x: number; y: number; width: number; density: 0|1|2 }[]; crows?: { x: number; pecking: boolean }[]; wildfire?: { x: number; width: number; stage: string; seed: number }; beetles?: { zones: { x: number; radius: number }[]; intensity: number }; drought?: { intensity: number }; blowdown?: { seed: number; fallen: { x: number; dir: 1 | -1 }[] } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -1246,6 +1246,43 @@ export function renderFrame(
       if (h % 5 < 2) {
         const hazeColor = lerpColor(getSkyColor(hazeY, period, blend), "#c8a040", dri * 0.35)
         buffer[hazeY]![x] = { char: "░", color: hazeColor }
+      }
+    }
+  }
+
+  // 8i. Storm blowdown — snapped trunks lying horizontal, debris scattered
+  if (options.blowdown && options.blowdown.fallen.length > 0) {
+    const { seed: bseed, fallen } = options.blowdown
+    for (const { x: fx, dir } of fallen) {
+      // Snapped trunk stub at base
+      const stubY = groundStart - 1
+      if (buffer[stubY]![fx]?.color) buffer[stubY]![fx] = { char: "╷", color: "#5a3820" }
+      // Horizontal trunk lying on ground, stretching 5-9 cols in dir
+      const trunkLen = 5 + (hash(fx * 71 + bseed + 33331) % 5)
+      for (let i = 1; i <= trunkLen; i++) {
+        const tx = fx + i * dir
+        if (tx < 0 || tx >= width) continue
+        buffer[groundStart]![tx] = { char: "─", color: lerpColor("#5a3820", "#4a2810", i / trunkLen) }
+      }
+      // Scattered leaf debris around fallen tree
+      for (let di = -2; di <= trunkLen + 2; di++) {
+        const dx = fx + di * dir
+        if (dx < 0 || dx >= width) continue
+        const dh = hash(dx * 53 + fx * 19 + bseed + 55551)
+        if (dh % 5 === 0) {
+          const debrisY = groundStart - 1
+          if (!buffer[debrisY]![dx]?.color || buffer[debrisY]![dx]!.char === " ")
+            buffer[debrisY]![dx] = { char: dh % 2 === 0 ? "·" : "·", color: "#7a6040" }
+        }
+      }
+    }
+    // Horizontal rain streaks across whole scene during storm phase
+    for (let y = 1; y < groundStart; y++) {
+      for (let x = 0; x < width; x++) {
+        const h = hash(x * 37 + y * 83 + bseed * 17 + 66661)
+        if (h % 6 === 0 && !buffer[y]![x]?.color) {
+          buffer[y]![x] = { char: "╌", color: "#5888a8" }
+        }
       }
     }
   }

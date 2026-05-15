@@ -125,6 +125,7 @@ let buzzard: { xf: number; y: number; angle: number; speed: number } | null = nu
 let wren: { x: number; speed: number; pauseTimer: number } | null = null
 let pineMarten: { x: number; y: number; speed: number } | null = null
 let pheasant: { x: number; speed: number; flushed: boolean } | null = null
+let sparrowhawk: { xf: number; speed: number; y: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -198,6 +199,7 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     wren: wren ? { x: wren.x } : undefined,
     pineMarten: pineMarten ? { x: pineMarten.x, y: pineMarten.y } : undefined,
     pheasant: pheasant ? { x: pheasant.x, flushed: pheasant.flushed } : undefined,
+    sparrowhawk: sparrowhawk ? { x: Math.floor(sparrowhawk.xf), y: sparrowhawk.y, leftward: sparrowhawk.speed < 0 } : undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -418,6 +420,12 @@ export async function viewer(): Promise<void> {
     }
     // Aurora — phase drift for curtain animation
     if (aurora) aurora.phase += 0.15
+    // Sparrowhawk — explosive fast dash through tree canopy level
+    if (sparrowhawk) {
+      sparrowhawk.xf += sparrowhawk.speed
+      const w = process.stdout.columns || 80
+      if (sparrowhawk.xf > w + 6 || sparrowhawk.xf < -6) sparrowhawk = null
+    }
     // Buzzard — slow thermal soaring; circular drift in sky
     if (buzzard) {
       buzzard.angle += buzzard.speed
@@ -1454,6 +1462,25 @@ export async function viewer(): Promise<void> {
     }, delay)
   }
   schedulePineMartenSpawn()
+
+  // Sparrowhawk — explosive dash through canopy; every 15-30 min during day
+  function scheduleSparrowhawkSpawn(): void {
+    const delay = (15 + Math.random() * 15) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isDay = h >= 7 && h < 19
+      if (isDay && !sparrowhawk && (forest?.trees.length ?? 0) >= 3) {
+        const w = process.stdout.columns || 80
+        const goLeft = Math.random() < 0.5
+        sparrowhawk = { xf: goLeft ? w + 3 : -3, speed: goLeft ? -3 : 3, y: SKY_ROWS + 2 + Math.floor(Math.random() * 3) }
+        // Scatter birds and rabbits on approach
+        rabbits.forEach(r => { r.speed = 4 })
+        birds = birds.filter(b => b.y > 2)
+      }
+      scheduleSparrowhawkSpawn()
+    }, delay)
+  }
+  scheduleSparrowhawkSpawn()
 
   // Pheasant — slow ground bird, springs from cover when startled; every 20-40 min, daytime
   function schedulePheasantSpawn(): void {

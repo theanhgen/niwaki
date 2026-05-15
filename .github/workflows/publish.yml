@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +26,6 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-          token: ''
 
       - name: Check if version is new
         id: version_check
@@ -33,7 +33,6 @@ jobs:
           CURRENT=$(node -p "require('./package.json').version")
           PUBLISHED=$(npm view niwaki version 2>/dev/null || echo "0.0.0")
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "published=$PUBLISHED" >> $GITHUB_OUTPUT
           if [ "$CURRENT" = "$PUBLISHED" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
           else
@@ -43,3 +42,5 @@ jobs:
       - name: Publish
         if: steps.version_check.outputs.skip == 'false'
         run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

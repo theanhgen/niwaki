@@ -347,7 +347,7 @@ function seasonTintColor(hex: string, season: string): string {
 export function renderFrame(
   forest: Forest,
   termWidth = 80,
-  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number } } = {},
+  options: { twinkleSeed?: number; birds?: { x: number; y: number }[]; foxes?: { x: number }[]; rabbits?: { x: number }[]; shootingStarTrail?: { x: number; y: number }[]; deer?: { x: number }; fairyRingX?: number; milestoneText?: string; isRaining?: boolean; windStrength?: 0 | 1 | 2; postRain?: boolean; isLightning?: boolean; comet?: { x: number; y: number }; bearPrints?: number[]; bats?: { x: number; y: number }[]; hawk?: { x: number }; squirrel?: { x: number }; heron?: { x: number }; dragonfly?: { x: number; y: number }; streamFish?: { x: number; leftward: boolean }; woodpecker?: { x: number; y: number; peck: boolean }; weasel?: { x: number; y: number }; frog?: { x: number }; fireflies?: { x: number; y: number; lit: boolean }[]; owl?: { x: number; y: number } } = {},
 ): string {
   const width = Math.max(40, termWidth)
   const buffer = createBuffer(width)
@@ -673,6 +673,26 @@ export function renderFrame(
     buffer[undergrowthY]![options.frog.x] = { char: "o", color: "#4a8828" }
   }
 
+  // Fireflies — summer nights, blinking in the understory (lower tree rows)
+  if (options.fireflies) {
+    for (const ff of options.fireflies) {
+      if (!ff.lit) continue
+      if (ff.y >= SKY_ROWS + 3 && ff.y < SKY_ROWS + TREE_ROWS && ff.x >= 0 && ff.x < width) {
+        if (!buffer[ff.y]![ff.x]?.color) {
+          buffer[ff.y]![ff.x] = { char: "·", color: "#b8f040" }
+        }
+      }
+    }
+  }
+
+  // Owl — nocturnal, perched on a branch in the mid-canopy
+  if (options.owl) {
+    const { x: ox, y: oy } = options.owl
+    if (oy >= SKY_ROWS && oy < SKY_ROWS + TREE_ROWS - 1 && ox >= 0 && ox < width) {
+      buffer[oy]![ox] = { char: "ô", color: "#7a6040" }
+    }
+  }
+
   // 7c. Deer — grazes at undergrowth level at dawn/dusk
   if (options.deer) {
     const dy = groundStart - 1
@@ -972,7 +992,7 @@ export function renderFrame(
   const lines: string[] = []
   for (let y = 0; y < SCENE_HEIGHT - SPACER_ROWS - STATS_ROWS - CTA_ROWS; y += 1) {
     let line = ""
-    const skyBg = y < SKY_ROWS ? getSkyColor(y, period, blend) : null
+    const skyBg = y < SKY_ROWS ? seasonTintColor(getSkyColor(y, period, blend), season) : null
     for (const cell of buffer[y]!) {
       if (!cell.color) {
         line += cell.char

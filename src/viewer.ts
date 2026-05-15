@@ -79,6 +79,8 @@ let streamFish: { x: number; leftward: boolean } | null = null
 let woodpecker: { x: number; y: number; peck: boolean } | null = null
 let weasel: { x: number; y: number; speed: number } | null = null
 let frog: { x: number } | null = null
+let fireflies: { x: number; y: number; lit: boolean; blinkTimer: number }[] = []
+let owl: { x: number; y: number } | null = null
 
 function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0, milestoneText?: string): void {
   moveHome()
@@ -106,6 +108,8 @@ function renderForest(forest: Parameters<typeof renderFrame>[0], twinkleSeed = 0
     woodpecker: woodpecker ?? undefined,
     weasel: weasel ?? undefined,
     frog: frog ?? undefined,
+    fireflies: fireflies.length > 0 ? fireflies : undefined,
+    owl: owl ?? undefined,
   })
   process.stdout.write(frame.replace(/\n/g, "\x1b[K\n") + "\x1b[K\x1b[J")
 }
@@ -450,6 +454,39 @@ export async function viewer(): Promise<void> {
   }
   scheduleWeaselSpawn()
 
+  // Fireflies: summer nights, blink in understory — spawn gradually up to 12, clear at dawn
+  setInterval(() => {
+    const h = new Date().getHours()
+    const m = new Date().getMonth()
+    const isSummerNight = (m >= 4 && m <= 8) && (h >= 21 || h < 4)
+    if (!isSummerNight) { fireflies = []; return }
+    if (fireflies.length >= 12 || forest!.trees.length < 5) return
+    const width = process.stdout.columns || 80
+    fireflies.push({
+      x: Math.floor(Math.random() * width),
+      y: 7 + Math.floor(Math.random() * 3),  // lower canopy / understory rows
+      lit: Math.random() < 0.5,
+      blinkTimer: 1 + Math.floor(Math.random() * 6),
+    })
+  }, 4000)
+
+  // Owl: nocturnal predator, perches on a tree branch, every 25-50 min, stays 10-30 min
+  function scheduleOwlVisit(): void {
+    const delay = (25 + Math.random() * 25) * 60 * 1000
+    setTimeout(() => {
+      const h = new Date().getHours()
+      const isNight = h >= 21 || h < 5
+      if (isNight && !owl && forest!.trees.length > 0) {
+        const width = process.stdout.columns || 80
+        const tree = forest!.trees[Math.floor(Math.random() * forest!.trees.length)]!
+        owl = { x: Math.min(tree.x + 1, width - 1), y: 6 }
+        setTimeout(() => { owl = null }, (10 + Math.random() * 20) * 60 * 1000)
+      }
+      scheduleOwlVisit()
+    }, delay)
+  }
+  scheduleOwlVisit()
+
   // Lightning + dragonfly dart: 500ms tick
   setInterval(() => {
     if (isRaining && !animating && Math.random() < 0.03) {
@@ -461,6 +498,14 @@ export async function viewer(): Promise<void> {
       }, 140)
     }
     if (woodpecker) woodpecker.peck = !woodpecker.peck
+    // Firefly blink — each firefly toggles independently
+    for (const ff of fireflies) {
+      ff.blinkTimer -= 1
+      if (ff.blinkTimer <= 0) {
+        ff.lit = !ff.lit
+        ff.blinkTimer = ff.lit ? 1 + Math.floor(Math.random() * 3) : 2 + Math.floor(Math.random() * 5)
+      }
+    }
     if (dragonfly && Math.random() < 0.6) {
       const width = process.stdout.columns || 80
       const anchor = dragonfly
